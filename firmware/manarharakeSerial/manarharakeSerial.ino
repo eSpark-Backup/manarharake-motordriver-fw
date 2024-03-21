@@ -1,9 +1,3 @@
-#define ARDUINO_BOARD 1
-#define TEENSY_BOARD  2
-
-#define BOARD ARDUINO_BOARD
-// #define BOARD TEENSY_BOARD
-
 #if (BOARD == ARDUINO_BOARD)
 #include <Arduino_FreeRTOS.h>
 #endif
@@ -14,12 +8,17 @@
 
 #include <Arduino.h>
 #include <EEPROM.h>
-// Function prototypes for task functions
-void demoTask(void *pvParameters);
+#include "motor_control.hpp"
+#include "board.h"
 
-// Constants
-#define LED_PIN 12
-#define BLINK_DELAY_MS 250  // Default blink delay
+Motor motors[6] = {
+    Motor(100, 0, 5, M1_PIN), // Motor 1
+    Motor(100, 0, 5, M2_PIN), // Motor 2
+    Motor(100, 0, 5, M3_PIN), // Motor 3
+    Motor(100, 0, 5, M4_PIN), // Motor 4
+    Motor(100, 0, 5, M5_PIN), // Motor 5
+    Motor(100, 0, 5, M6_PIN)  // Motor 6
+};
 
 // Global variables
 TaskHandle_t demoTaskHandle = NULL;  // Handle for the blinking task
@@ -52,28 +51,14 @@ const uint16_t arrayValues[7][12] = {
   {0,     0,    0,      50,   0,      50,   0,      0,    0,      50,   0,      0}    // G
 };
 
-const uint8_t MOTOR_PINS[] = {3, 5, 6, 9, 10, 11}; // Example pins for 6 motors
-uint8_t motorSpeeds[6] = {0}; // Array to store motor speeds
-uint16_t motorPositions[6] = {0}; // Array to store motor positions
-uint8_t sensorSensitivities[6] = {0}; // Array to store sensor sensitivities
-
 void setup() {
   Serial.begin(115200);
   Serial.println("Controller Started");
-
-  // Initialize LED pin as output
-  // pinMode(LED_PIN, OUTPUT);
-  #if (BOARD == ARDUINO_BOARD)
-  pinMode(LED_PIN, OUTPUT);
-  #endif 
-  #if (BOARD == TEENSY_BOARD)
-  pinMode(LED_PIN, arduino::OUTPUT); // Set motor pins as output
-  #endif
+  // Create Tasks
   xTaskCreate(printTask, "printTask", 100, NULL, 0, &printTaskHandle);
   xTaskCreate(mainTask, "mainTask", 128, NULL, 1, &mainTaskHandle);
   xTaskCreate(demoTask, "BlinkLED", 64, NULL, 2, &demoTaskHandle);
   vTaskSuspend(demoTaskHandle);
-
   vTaskStartScheduler();
 }
 
@@ -87,154 +72,35 @@ void mainTask(void *pvParameters) {
       String command = Serial.readStringUntil('\n');  // Read the command until newline character
 
       if (command.startsWith("SET MOTOR")) {
-        uint8_t motorNumIndex = command.indexOf("MOTOR") + 6;  // Find the index of "MOTOR" part in the command
-        uint8_t positionIndex = command.indexOf("POSITION");   // Find the index of "POSITION" part in the command
-        uint8_t speedIndex = command.indexOf("SPEED");         // Find the index of "SPEED" part in the command
-
-        if (motorNumIndex == -1 || (positionIndex == -1 && speedIndex == -1)) {
-          //Serial.println("Motor number, position, or speed is missing.");
-          return;  // Exit the function if any required attribute is missing
-        }
-
-        uint8_t motorNum = command.substring(motorNumIndex, min(positionIndex, speedIndex)).toInt();  // Extract motor number from command
-        if (motorNum < 1 || motorNum > 6) {
-          //Serial.println("Invalid motor number.");
-          return;  // Exit the function if the motor number is invalid
-        }
-
-        if (positionIndex != -1) {
-          uint16_t position = command.substring(positionIndex + 9).toInt();  // Extract position from command
-          setMotorPosition(motorNum, position);
-        }
-
-        if (speedIndex != -1) {
-          uint8_t speed = command.substring(speedIndex + 6).toInt();  // Extract speed from command
-          setMotorSpeed(motorNum, speed);
-        }
+        setMotor(command);
       } else if (command.startsWith("SET SENSOR")) {
-        uint8_t sensorNumIndex = command.indexOf("SENSOR") + 7;     // Find the index of "SENSOR" part in the command
-        uint8_t sensitivityIndex = command.indexOf("SENSITIVITY");  // Find the index of "SENSITIVITY" part in the command
-
-        if (sensorNumIndex == -1 || sensitivityIndex == -1) {
-          //Serial.println("Sensor number or sensitivity is missing.");
-          return;  // Exit the function if either sensor number or sensitivity is missing
-        }
-
-        uint8_t sensorNum = command.substring(sensorNumIndex, sensitivityIndex).toInt();  // Extract sensor number from command
-        if (sensorNum < 1 || sensorNum > 6) {
-          //Serial.println("Invalid sensor number.");
-          return;  // Exit the function if the sensor number is invalid
-        }
-
-        uint8_t sensitivity = command.substring(sensitivityIndex + 12).toInt();  // Extract sensitivity from command
-        setSensorSensitivity(sensorNum, sensitivity);                        // Set sensitivity for the specified sensor
+        setSensor(command);                      // Set sensitivity for the specified sensor
       } else if (command.startsWith("QUERY MOTOR")) {
-        uint8_t motorNumIndex = command.indexOf("MOTOR") + 6;  // Find the index of "MOTOR" part in the command
-        uint8_t queryTypeIndex = command.indexOf("QUERY");     // Find the index of "QUERY" part in the command
-
-        if (motorNumIndex == -1 || queryTypeIndex == -1) {
-          //Serial.println("Motor number is missing.");
-          return;  // Exit the function if motor number is missing
-        }
-
-        uint8_t motorNum = command.substring(motorNumIndex, queryTypeIndex - 1).toInt();  // Extract motor number from command
-        if (motorNum < 1 || motorNum > 6) {
-          //Serial.println("Invalid motor number.");
-          return;  // Exit the function if the motor number is invalid
-        }
-
-        if (command.indexOf("SPEED") != -1) {
-          queryMotorSpeed(motorNum);  // Query speed for the specified motor
-        } else if (command.indexOf("POSITION") != -1) {
-          queryMotorPosition(motorNum);  // Query position for the specified motor
-        } else {
-          //Serial.println("Invalid query type.");
-          return;  // Exit the function if the query type is invalid
-        }
+        queryMotor(command);
       } else if (command.startsWith("QUERY SENSOR")) {
-        uint8_t sensorNumIndex = command.indexOf("SENSOR") + 6;  // Find the index of "SENSOR" part in the command
-
-        if (sensorNumIndex == -1) {
-          //Serial.println("Sensor number is missing.");
-          return;  // Exit the function if sensor number is missing
-        }
-
-        uint8_t sensorNum = command.substring(sensorNumIndex).toInt();  // Extract sensor number from command
-        if (sensorNum < 1 || sensorNum > 6) {
-          //Serial.println("Invalid sensor number.");
-          return;  // Exit the function if the sensor number is invalid
-        }
-
-        querySensorSensitivity(sensorNum);  // Query sensitivity for the specified sensor
+        querySensor(command);
       } else if (command.charAt(0) >= 'A' && command.charAt(0) <= 'G') {
         executeArray(command);  // Call executeArray function for array commands
       } else if (command.startsWith("START DEMO")) {
-        // Create the blinking task if it doesn't exist
-        // if (demoTaskHandle == NULL) {
-          // //Serial.println("Blink Task Starting!");
-          vTaskSuspend(printTaskHandle);
-          vTaskResume(demoTaskHandle);
-          // xTaskCreate(demoTask, "BlinkLED", 100, NULL, 1, &demoTaskHandle);
-        // }
+        startDemo();
       } else if (command.startsWith("STOP DEMO")) {
-        // Delete the blinking task if it exists
-        if (demoTaskHandle != NULL) {
-          // vTaskDelete(demoTaskHandle);
-          vTaskResume(printTaskHandle);
-          vTaskSuspend(demoTaskHandle);
-          // demoTaskHandle = NULL;
-          // digitalWrite(LED_PIN, LOW);  // Ensure LED is turned off
-        }
+        stopDemo();
       } else if (command.startsWith("SAVE CONFIG")){
-        EEPROM.write(10, motorSpeeds[0]);
-        EEPROM.write(11, motorSpeeds[1]);
-        EEPROM.write(12, motorSpeeds[2]);
-        EEPROM.write(13, motorSpeeds[3]);
-        EEPROM.write(14, motorSpeeds[4]);
-        EEPROM.write(15, motorSpeeds[5]);
-
-        EEPROM.write(20, motorPositions[0]);
-        EEPROM.write(21, motorPositions[1]);
-        EEPROM.write(22, motorPositions[2]);
-        EEPROM.write(23, motorPositions[3]);
-        EEPROM.write(24, motorPositions[4]);
-        EEPROM.write(25, motorPositions[5]);
-
-        EEPROM.write(30, motorPositions[0]>>8);
-        EEPROM.write(31, motorPositions[1]>>8);
-        EEPROM.write(32, motorPositions[2]>>8);
-        EEPROM.write(33, motorPositions[3]>>8);
-        EEPROM.write(34, motorPositions[4]>>8);
-        EEPROM.write(35, motorPositions[5]>>8);
-
+        saveConfiguration();
       } else if (command.startsWith("LOAD CONFIG")){
-        setMotorSpeed(1, EEPROM.read(10));
-        setMotorSpeed(2, EEPROM.read(11));
-        setMotorSpeed(3, EEPROM.read(12));
-        setMotorSpeed(4, EEPROM.read(13));
-        setMotorSpeed(5, EEPROM.read(14));
-        setMotorSpeed(6, EEPROM.read(15));      
-
-        setMotorPosition(1, EEPROM.read(20) | ((uint16_t)(EEPROM.read(30)) << 8));
-        setMotorPosition(2, EEPROM.read(21) | ((uint16_t)(EEPROM.read(31)) << 8));
-        setMotorPosition(3, EEPROM.read(22) | ((uint16_t)(EEPROM.read(32)) << 8));
-        setMotorPosition(4, EEPROM.read(23) | ((uint16_t)(EEPROM.read(33)) << 8));
-        setMotorPosition(5, EEPROM.read(24) | ((uint16_t)(EEPROM.read(34)) << 8));
-        setMotorPosition(6, EEPROM.read(25) | ((uint16_t)(EEPROM.read(35)) << 8)); 
+        loadConfiguration();
       } else {
         //Serial.println("Invalid command.");
         // return;  // Exit the function if the command is invalid
-        // printConfiguration();
       }
     }
     vTaskDelay(1);
   }
-
-  // //Serial.println("task ended");
 }
 
-// Task to blink LED
-void demoTask(void *pvParameters) {
+// Task to Print current motor config
+void demoTask(void *pvParameters) 
+{
   (void)pvParameters;
 
   char demoArray;
@@ -249,96 +115,40 @@ void demoTask(void *pvParameters) {
       vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
     }
   }
-
-  // for (;;) {
-  //   // Serial.println("Blinking");
-  //   digitalWrite(LED_PIN, HIGH);  // Turn LED on
-  //   vTaskDelay(BLINK_DELAY_MS / portTICK_PERIOD_MS);
-  //   digitalWrite(LED_PIN, LOW);  // Turn LED off
-  //   vTaskDelay(BLINK_DELAY_MS / portTICK_PERIOD_MS);
-  // }
 }
 
-void printTask(void *pvParameters) {
+void printTask(void *pvParameters) 
+{
   (void) pvParameters;
   for(;;)
   {
     vTaskDelay(500 / portTICK_PERIOD_MS);
     printConfiguration();
-    // Serial.println("Config print disabled");
     vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 
-void setMotorPosition(uint8_t motorNum, uint16_t position) {
-  // Implement your logic to move the motor to the specified position here
-  // For simplicity, we'll just set the position in the array
-  motorPositions[motorNum - 1] = position;
-}
-
-void setMotorSpeed(uint8_t motorNum, uint8_t speed) {
-  // Adjust speed within the range of 100 to 255
-  // speed = constrain(speed, 100, 255);
-  // Set motor speed using PWM
-  analogWrite(MOTOR_PINS[motorNum - 1], speed);
-  // Update speed in the array
-  motorSpeeds[motorNum - 1] = speed;
-}
-
-void setSensorSensitivity(uint8_t sensorNum, uint8_t sensitivity) {
-  // Adjust sensitivity within the range of 1 to 10
-  // sensitivity = constrain(sensitivity, 1, 10);
-  // Set sensitivity for the specified sensor
-  sensorSensitivities[sensorNum - 1] = sensitivity;
-}
-
-void queryMotorPosition(uint8_t motorNum) {
-  // Query position for the specified motor
-  Serial.print("Position of Motor ");
-  Serial.print(motorNum);
-  Serial.print(": ");
-  Serial.println(motorPositions[motorNum - 1]);
-}
-
-void queryMotorSpeed(uint8_t motorNum) {
-  // Query speed for the specified motor
-  Serial.print("Speed of Motor ");
-  Serial.print(motorNum);
-  Serial.print(": ");
-  Serial.println(motorSpeeds[motorNum - 1]);
-}
-
-void querySensorSensitivity(uint8_t sensorNum) {
-  // Print current sensitivity setting of the specified sensor
-  Serial.print("Current sensitivity setting of Sensor ");
-  Serial.print(sensorNum);
-  Serial.print(": ");
-  Serial.println(sensorSensitivities[sensorNum - 1]);
-}
-
-void printConfiguration() {
+void printConfiguration() 
+{
   // Print total configuration for all 6 motors and sensors
   Serial.println("Total Configuration:");
-  // char buffer[50];
 
   for (uint8_t i = 0; i < 6; i++) {
-    // Serial.print("Motor ");
     Serial.print(i + 1);
     Serial.print(": Speed=");
-    Serial.print(motorSpeeds[i]);
+    Serial.print(motors[i].getSpeed());
     Serial.print(", Pos=");
-    Serial.print(motorPositions[i]);
+    Serial.print(motors[i].getPosition());
     // Serial.print(", Sensor ");
     // Serial.print(i + 1);
     Serial.print(": Sens=");
-    Serial.println(sensorSensitivities[i]);
-    // sprintf (buffer, "Motor %d Speed %d Position %d Sensor Sensitivity",i + 1, motorSpeeds[i], motorPositions[i]);
-    // Serial.print(buffer);
+    Serial.println(motors[i].getSensorSensitivity());
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
 
-void executeArray(String command) {
+void executeArray(String command) 
+{
   char arrayLetter = command.charAt(0); // Extract array letter from command
   if (arrayLetter < 'A' || arrayLetter > 'G') {
     Serial.println("Invalid array letter.");
@@ -363,7 +173,144 @@ void executeArray(String command) {
       case 5: motorNumber = 4; break;
     }
     
-    setMotorPosition(motorNumber, position); // Set position for motor i
-    setMotorSpeed(motorNumber, speed); // Set speed for motor i
+    motors[motorNumber - 1].setSpeed(speed); // Set speed for motor i
+    motors[motorNumber - 1].setPosition(position); // Set speed for motor i
   }
+}
+
+void loadConfiguration()
+{
+  motors[1 - 1].setSpeed(EEPROM.read(10));
+  motors[2 - 1].setSpeed(EEPROM.read(11));
+  motors[3 - 1].setSpeed(EEPROM.read(12));
+  motors[4 - 1].setSpeed(EEPROM.read(13));
+  motors[5 - 1].setSpeed(EEPROM.read(14));
+  motors[6 - 1].setSpeed(EEPROM.read(15));      
+
+  motors[1 - 1].setPosition(EEPROM.read(20) | ((uint16_t)(EEPROM.read(30)) << 8));
+  motors[2 - 1].setPosition(EEPROM.read(21) | ((uint16_t)(EEPROM.read(31)) << 8));
+  motors[3 - 1].setPosition(EEPROM.read(22) | ((uint16_t)(EEPROM.read(32)) << 8));
+  motors[4 - 1].setPosition(EEPROM.read(23) | ((uint16_t)(EEPROM.read(33)) << 8));
+  motors[5 - 1].setPosition(EEPROM.read(24) | ((uint16_t)(EEPROM.read(34)) << 8));
+  motors[6 - 1].setPosition(EEPROM.read(25) | ((uint16_t)(EEPROM.read(35)) << 8)); 
+}
+
+void saveConfiguration()
+{
+  EEPROM.write(10, motors[0].getSpeed());
+  EEPROM.write(11, motors[1].getSpeed());
+  EEPROM.write(12, motors[2].getSpeed());
+  EEPROM.write(13, motors[3].getSpeed());
+  EEPROM.write(14, motors[4].getSpeed());
+  EEPROM.write(15, motors[5].getSpeed());
+
+  EEPROM.write(20, motors[0].getPosition());
+  EEPROM.write(21, motors[1].getPosition());
+  EEPROM.write(22, motors[2].getPosition());
+  EEPROM.write(23, motors[3].getPosition());
+  EEPROM.write(24, motors[4].getPosition());
+  EEPROM.write(25, motors[5].getPosition());
+
+  EEPROM.write(30, motors[0].getPosition()>>8);
+  EEPROM.write(31, motors[1].getPosition()>>8);
+  EEPROM.write(32, motors[2].getPosition()>>8);
+  EEPROM.write(33, motors[3].getPosition()>>8);
+  EEPROM.write(34, motors[4].getPosition()>>8);
+  EEPROM.write(35, motors[5].getPosition()>>8);
+}
+
+void stopDemo()
+{
+  // Delete the blinking task if it exists
+  if (demoTaskHandle != NULL) {
+  vTaskResume(printTaskHandle);
+  vTaskSuspend(demoTaskHandle);
+  }
+}
+
+void startDemo()
+{
+  vTaskSuspend(printTaskHandle);
+  vTaskResume(demoTaskHandle);
+}
+
+void setSensor(const String& command) 
+{
+    uint8_t sensorNumIndex = command.indexOf("SENSOR") + 7;
+    uint8_t sensitivityIndex = command.indexOf("SENSITIVITY");
+
+    if (sensorNumIndex == -1 || sensitivityIndex == -1) {
+        return; // Exit if either sensor number or sensitivity is missing
+    }
+
+    uint8_t sensorNum = command.substring(sensorNumIndex, sensitivityIndex).toInt();
+    if (sensorNum < 1 || sensorNum > 6) {
+        return; // Exit if the sensor number is invalid
+    }
+
+    uint8_t sensitivity = command.substring(sensitivityIndex + 12).toInt();
+    motors[sensorNum - 1].setSensorSensitivity(sensitivity);
+}
+
+void queryMotor(const String& command) 
+{
+    uint8_t motorNumIndex = command.indexOf("MOTOR") + 6;
+    uint8_t queryTypeIndex = command.indexOf("QUERY");
+
+    if (motorNumIndex == -1 || queryTypeIndex == -1) {
+        return; // Exit if motor number is missing
+    }
+
+    uint8_t motorNum = command.substring(motorNumIndex, queryTypeIndex - 1).toInt();
+    if (motorNum < 1 || motorNum > 6) {
+        return; // Exit if the motor number is invalid
+    }
+
+    if (command.indexOf("SPEED") != -1) {
+        motors[motorNum - 1].getSpeed();
+    } else if (command.indexOf("POSITION") != -1) {
+        motors[motorNum - 1].getPosition();
+    }
+}
+
+void querySensor(const String& command) 
+{
+    uint8_t sensorNumIndex = command.indexOf("SENSOR") + 6;
+
+    if (sensorNumIndex == -1) {
+        return; // Exit if sensor number is missing
+    }
+
+    uint8_t sensorNum = command.substring(sensorNumIndex).toInt();
+    if (sensorNum < 1 || sensorNum > 6) {
+        return; // Exit if the sensor number is invalid
+    }
+
+    motors[sensorNum - 1].getSensorSensitivity();
+}
+
+void setMotor(const String& command) 
+{
+    uint8_t motorNumIndex = command.indexOf("MOTOR") + 6;
+    uint8_t positionIndex = command.indexOf("POSITION");
+    uint8_t speedIndex = command.indexOf("SPEED");
+
+    if (motorNumIndex == -1 || (positionIndex == -1 && speedIndex == -1)) {
+        return; // Exit if any required attribute is missing
+    }
+
+    uint8_t motorNum = command.substring(motorNumIndex, min(positionIndex, speedIndex)).toInt();
+    if (motorNum < 1 || motorNum > 6) {
+        return; // Exit if the motor number is invalid
+    }
+
+    if (positionIndex != -1) {
+        uint16_t position = command.substring(positionIndex + 9).toInt();
+        motors[motorNum - 1].setPosition(position);
+    }
+
+    if (speedIndex != -1) {
+        uint8_t speed = command.substring(speedIndex + 6).toInt();
+        motors[motorNum - 1].setSpeed(speed);
+    }
 }
