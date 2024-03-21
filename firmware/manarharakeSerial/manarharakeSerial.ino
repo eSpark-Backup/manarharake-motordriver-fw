@@ -193,6 +193,14 @@ void loadConfiguration()
   motors[4 - 1].setPosition(EEPROM.read(23) | ((uint16_t)(EEPROM.read(33)) << 8));
   motors[5 - 1].setPosition(EEPROM.read(24) | ((uint16_t)(EEPROM.read(34)) << 8));
   motors[6 - 1].setPosition(EEPROM.read(25) | ((uint16_t)(EEPROM.read(35)) << 8)); 
+
+  motors[1 - 1].setSensorSensitivity(EEPROM.read(40));
+  motors[2 - 1].setSensorSensitivity(EEPROM.read(41));
+  motors[3 - 1].setSensorSensitivity(EEPROM.read(42));
+  motors[4 - 1].setSensorSensitivity(EEPROM.read(43));
+  motors[5 - 1].setSensorSensitivity(EEPROM.read(44));
+  motors[6 - 1].setSensorSensitivity(EEPROM.read(45));
+
 }
 
 void saveConfiguration()
@@ -217,6 +225,13 @@ void saveConfiguration()
   EEPROM.write(33, motors[3].getPosition()>>8);
   EEPROM.write(34, motors[4].getPosition()>>8);
   EEPROM.write(35, motors[5].getPosition()>>8);
+
+  EEPROM.write(40, motors[0].getSensorSensitivity());
+  EEPROM.write(41, motors[1].getSensorSensitivity());
+  EEPROM.write(42, motors[2].getSensorSensitivity());
+  EEPROM.write(43, motors[3].getSensorSensitivity());
+  EEPROM.write(44, motors[4].getSensorSensitivity());
+  EEPROM.write(45, motors[5].getSensorSensitivity());
 }
 
 void stopDemo()
