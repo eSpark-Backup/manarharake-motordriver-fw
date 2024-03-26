@@ -1,13 +1,14 @@
 #include <Arduino.h>
 #include "manarharake.hpp"
 
-Manarharake mh_controller;
+Manarharake mhController;
 
 void setup() {
-  mh_controller.initalize();
+  mhController.initalize();
 }
 
 void loop() {
+  delay(1);
 }
 
 

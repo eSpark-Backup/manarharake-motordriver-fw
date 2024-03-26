@@ -6,6 +6,10 @@
 #if (BOARD == TEENSY_BOARD)
 #include "arduino_freertos.h"
 #endif
+#if  (BOARD == ESP32_BOARD)
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#endif
 
 #include <Arduino.h>
 #include <EEPROM.h>
@@ -22,10 +26,10 @@ static void setSensor(const String& command);
 static void queryMotor(const String& command);
 static void querySensor(const String& command);
 static void setResistor(const String& command);
-static void loadConfiguration();
-static void saveConfiguration();
-static void startDemo();
-static void stopDemo();
+static void loadConfiguration(const String& command);
+static void saveConfiguration(const String& command);
+static void startDemo(const String& command);
+static void stopDemo(const String& command);
 static void executeArray(String command);
 
 // Global variables
@@ -42,77 +46,93 @@ Motor motors[6] = {
     Motor(100, 0, 5, M6_PIN)  // Motor 6
 };
 
+
 // // Array to store motor positions and speeds for each array letter
-// const int arrayValues[7][12] = {
-//   /*    M6          M5             M1            M2           M3            M4          */
-//   /*pos   speed pos     speed pos     speed pos     speed pos     speed pos     speed   */
-//   {700,   255,  500,    255,  700,    255,  0,      255,  0,      255,  0,      255},   // A
-//   {700,   255,  1000,   255,  700,    255,  700,    255,  0,      255,  0,      255},   // B
-//   {900,   255,  900,    255,  900,    255,  900,    255,  900,    255,  900,    255},   // C
-//   {0,     255,  500,    255,  900,    255,  900,    255,  900,    255,  900,    255},   // D
-//   {800,   255,  500,    255,  500,    255,  0,      255,  0,      255,  0,      255},   // E
-//   {700,   255,  700,    255,  850,    255,  850,    255,  850,    255,  850,    255},   // F
-//   {0,     255,  0,      255,  0,      255,  0,      255,  0,      255,  0,      255}    // G
+// const MotorsConfig motorConfiguration[7] = {
+//     {{{700, 255}, {500, 255}, {700, 255}, {0, 255}, {0, 255}, {0, 255}}},   // A
+//     {{{700, 255}, {1000, 255}, {700, 255}, {700, 255}, {0, 255}, {0, 255}}}, // B
+//     {{{900, 255}, {900, 255}, {900, 255}, {900, 255}, {900, 255}, {900, 255}}}, // C
+//     {{{0, 255}, {500, 255}, {900, 255}, {900, 255}, {900, 255}, {900, 255}}}, // D
+//     {{{800, 255}, {500, 255}, {500, 255}, {0, 255}, {0, 255}, {0, 255}}},     // E
+//     {{{700, 255}, {700, 255}, {850, 255}, {850, 255}, {850, 255}, {850, 255}}}, // F
+//     {{{0, 255}, {0, 255}, {0, 255}, {0, 255}, {0, 255}, {0, 255}}}             // G
 // };
 
+// Define MotorSettings structure
+struct MotorSettings {
+    int position;
+    int speed;
+};
+
+// Define MotorsConfig structure
+struct MotorsConfig {
+    MotorSettings array_motors[6];
+};
 
 // Array to store motor positions and speeds for each array letter
-const int arrayValues[7][12] = {
-  /*    M6          M5             M1            M2           M3            M4          */
-  /*pos   speed pos     speed pos     speed pos     speed pos     speed pos     speed   */
-  {700,   0,    500,    50,   700,    100,  0,      150,  0,      200,  0,      255},   // A
-  {700,   150,  1000,   0,    700,    255,  700,    150,  0,      255,  0,      255},   // B
-  {900,   255,  900,    255,  900,    0,    900,    255,  900,    255,  900,    255},   // C
-  {0,     255,  500,    150,  900,    180,  900,    0,    900,    255,  900,    255},   // D
-  {800,   180,  500,    255,  500,    255,  0,      150,  0,      0,    0,      255},   // E
-  {700,   255,  700,    255,  850,    255,  850,    255,  850,    180,  850,    0},   // F
-  {0,     0,    0,      50,   0,      50,   0,      0,    0,      50,   0,      0}    // G
+const MotorsConfig motorConfiguration[7] = {
+    {{{700,   0   },    {500,   50  }, {700,  100 }, {0,    150 }, {0,    200 }, {0,    255 }}},    // A
+    {{{700,   150 },    {1000,  0   }, {700,  255 }, {700,  150 }, {0,    255 }, {0,    255 }}},    // B
+    {{{900,   255 },    {900,   255 }, {900,  0   }, {900,  255 }, {900,  255 }, {900,  255 }}},    // C
+    {{{0,     255 },    {500,   150 }, {900,  180 }, {900,  0   }, {900,  255 }, {900,  255 }}},    // D
+    {{{800,   180 },    {500,   255 }, {500,  255 }, {0,    150 }, {0,    0   }, {0,    255 }}},    // E
+    {{{700,   255 },    {700,   255 }, {850,  255 }, {850,  255 }, {850,  180 }, {850,  0   }}},    // F
+    {{{0,     0   },    {0,     50  }, {0,    50  }, {0,    0   }, {0,    50  }, {0,    0   }}}     // G
 };
+
+
+
 
 void Manarharake::initalize()
 {
     Serial.begin(115200);
+    EEPROM.begin(100);
     // Create Tasks
-    xTaskCreate(printTask, "printTask", 100, NULL, 0, &printTaskHandle);
-    xTaskCreate(mainTask, "mainTask", 128, NULL, 1, &mainTaskHandle);
-    xTaskCreate(demoTask, "BlinkLED", 64, NULL, 2, &demoTaskHandle);
+    xTaskCreate(printTask, "printTask", 2*2048, NULL, 0, &printTaskHandle);
+    xTaskCreate(mainTask, "mainTask", 2*2048, NULL, 1, &mainTaskHandle);
+    xTaskCreate(demoTask, "BlinkLED", 2*2048, NULL, 2, &demoTaskHandle);
     vTaskSuspend(demoTaskHandle);
     vTaskStartScheduler();
+    loadConfiguration("NULL");
     Serial.println("Controller Started");
 }
+
+struct SerialCommand{
+  char* commandString;
+  void(*commandCallback)(const String& command);
+};
+
+SerialCommand commands[] = {
+  {"SET MOTOR", setMotor},
+  {"SET SENSOR", setSensor},
+  {"QUERY MOTOR", queryMotor},
+  {"QUERY SENSOR", querySensor},
+  {"SET R", setResistor},
+  {"START DEMO", startDemo},
+  {"STOP DEMO", stopDemo},
+  {"SAVE CONFIG", saveConfiguration},
+  {"LOAD CONFIG", loadConfiguration}
+};
+
 
 static void mainTask(void *pvParameters) {
   
   for(;;) {
     if (Serial.available() > 0) {
       String command = Serial.readStringUntil('\n');  // Read the command until newline character
-
-      if (command.startsWith("SET MOTOR")) {
-        setMotor(command);
-      } else if (command.startsWith("SET SENSOR")) {
-        setSensor(command);                      // Set sensitivity for the specified sensor
-      } else if (command.startsWith("QUERY MOTOR")) {
-        queryMotor(command);
-      } else if (command.startsWith("QUERY SENSOR")) {
-        querySensor(command);
-      } else if (command.startsWith("SET R")) {
-        setResistor(command);
-      } else if (command.charAt(0) >= 'A' && command.charAt(0) <= 'G') {
-        executeArray(command);  // Call executeArray function for array commands
-      } else if (command.startsWith("START DEMO")) {
-        startDemo();
-      } else if (command.startsWith("STOP DEMO")) {
-        stopDemo();
-      } else if (command.startsWith("SAVE CONFIG")){
-        saveConfiguration();
-      } else if (command.startsWith("LOAD CONFIG")){
-        loadConfiguration();
-      } else {
-        //Serial.println("Invalid command.");
-        // return;  // Exit the function if the command is invalid
+      for(int i = 0; i < sizeof(commands)/sizeof(commands[0]); i++)
+      {
+        if(command.startsWith(commands[i].commandString))
+        {
+          commands[i].commandCallback(command);
+          break;
+        } else if (command.charAt(0) >= CONFIG_A && command.charAt(0) <= CONFIG_G) {
+          executeArray(command);  // Call executeArray function for array commands
+          break;
+        }
       }
     }
-    vTaskDelay(1);
+    vTaskDelay(10);
   }
 }
 
@@ -124,11 +144,11 @@ static void demoTask(void *pvParameters)
   char demoArray;
   for(;;) {
     for (int i = 0; i < 6; i++) {
-      demoArray = char('A' + i);
+      demoArray = char(CONFIG_A + i);
       executeArray(String(demoArray)); // Execute arrays A-F sequentially
       vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
       
-      demoArray = 'G';
+      demoArray = CONFIG_G;
       executeArray(String(demoArray)); // Execute array G after arrays A-F
       vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
     }
@@ -151,14 +171,14 @@ static void printConfiguration()
   // Print total configuration for all 6 motors and sensors
   Serial.println("Total Configuration:");
 
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < MOTOR_COUNT; i++) {
     Serial.print(i + 1);
     Serial.print(": Speed=");
     Serial.print(motors[i].getSpeed());
     Serial.print(", Pos=");
     Serial.print(motors[i].getPosition());
-    // Serial.print(", Sensor ");
-    // Serial.print(i + 1);
+    Serial.print(", Sensor ");
+    Serial.print(i + 1);
     Serial.print(": Sens=");
     Serial.println(motors[i].getSensorSensitivity());
     vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -168,27 +188,30 @@ static void printConfiguration()
 static void executeArray(String command) 
 {
   char arrayLetter = command.charAt(0); // Extract array letter from command
-  if (arrayLetter < 'A' || arrayLetter > 'G') {
+  if (arrayLetter < CONFIG_A || arrayLetter > CONFIG_G) {
     Serial.println("Invalid array letter.");
     return; // Exit the function if the array letter is invalid
   }
   
-  int arrayIndex = arrayLetter - 'A'; // Calculate array index
+  int arrayIndex = arrayLetter - CONFIG_A; // Calculate array index
   
   // Execute movements for each motor
-  for (int i = 0; i < 6; i++) {
-    int position = arrayValues[arrayIndex][i * 2]; // Get position value for motor i
-    int speed = arrayValues[arrayIndex][i * 2 + 1]; // Get speed value for motor i
-    
+  for (int i = 0; i < sizeof(motors)/sizeof(motors[0]); i++) {
+    // int position = motorConfiguration[arrayIndex][i * 2]; // Get position value for motor i
+    // int speed = motorConfiguration[arrayIndex][i * 2 + 1]; // Get speed value for motor i
+
+    int position = motorConfiguration[arrayIndex].array_motors[i].position; // Get position value for motor i
+    int speed = motorConfiguration[arrayIndex].array_motors[i].speed; // Get speed value for motor i
+
     // Adjust motor number according to the changed numbering (m6, m5, m1, m2, m3, m4)
     int motorNumber;
     switch(i) {
-      case 0: motorNumber = 6; break;
-      case 1: motorNumber = 5; break;
-      case 2: motorNumber = 1; break;
-      case 3: motorNumber = 2; break;
-      case 4: motorNumber = 3; break;
-      case 5: motorNumber = 4; break;
+      case 0: motorNumber = MOTOR_6; break;
+      case 1: motorNumber = MOTOR_5; break;
+      case 2: motorNumber = MOTOR_1; break;
+      case 3: motorNumber = MOTOR_2; break;
+      case 4: motorNumber = MOTOR_3; break;
+      case 5: motorNumber = MOTOR_4; break;
     }
     
     motors[motorNumber - 1].setSpeed(speed); // Set speed for motor i
@@ -196,73 +219,55 @@ static void executeArray(String command)
   }
 }
 
-static void loadConfiguration()
+static void loadConfiguration(const String& command)
 {
-  motors[1 - 1].setSpeed(EEPROM.read(10));
-  motors[2 - 1].setSpeed(EEPROM.read(11));
-  motors[3 - 1].setSpeed(EEPROM.read(12));
-  motors[4 - 1].setSpeed(EEPROM.read(13));
-  motors[5 - 1].setSpeed(EEPROM.read(14));
-  motors[6 - 1].setSpeed(EEPROM.read(15));      
+  for(int i = 0; i < MOTOR_COUNT; i++) {
+      int speedAddress = SPEED_OFFSET + i;
+      int positionLowAddress = POSITION_LOW_OFFSET + i;
+      int positionHighAddress = POSITION_HIGH_OFFSET + i;
+      int sensorSensitivityAddress = SENSOR_SENSITIVITY_OFFSET + i;
 
-  motors[1 - 1].setPosition(EEPROM.read(20) | ((int)(EEPROM.read(30)) << 8));
-  motors[2 - 1].setPosition(EEPROM.read(21) | ((int)(EEPROM.read(31)) << 8));
-  motors[3 - 1].setPosition(EEPROM.read(22) | ((int)(EEPROM.read(32)) << 8));
-  motors[4 - 1].setPosition(EEPROM.read(23) | ((int)(EEPROM.read(33)) << 8));
-  motors[5 - 1].setPosition(EEPROM.read(24) | ((int)(EEPROM.read(34)) << 8));
-  motors[6 - 1].setPosition(EEPROM.read(25) | ((int)(EEPROM.read(35)) << 8)); 
+      int speed = EEPROM.read(speedAddress);
+      int positionLow = EEPROM.read(positionLowAddress);
+      int positionHigh = EEPROM.read(positionHighAddress);
+      int sensorSensitivity = EEPROM.read(sensorSensitivityAddress);
 
-  motors[1 - 1].setSensorSensitivity(EEPROM.read(40));
-  motors[2 - 1].setSensorSensitivity(EEPROM.read(41));
-  motors[3 - 1].setSensorSensitivity(EEPROM.read(42));
-  motors[4 - 1].setSensorSensitivity(EEPROM.read(43));
-  motors[5 - 1].setSensorSensitivity(EEPROM.read(44));
-  motors[6 - 1].setSensorSensitivity(EEPROM.read(45));
-
-}
-
-static void saveConfiguration()
-{
-  EEPROM.update(10, motors[0].getSpeed());
-  EEPROM.update(11, motors[1].getSpeed());
-  EEPROM.update(12, motors[2].getSpeed());
-  EEPROM.update(13, motors[3].getSpeed());
-  EEPROM.update(14, motors[4].getSpeed());
-  EEPROM.update(15, motors[5].getSpeed());
-
-  EEPROM.update(20, motors[0].getPosition());
-  EEPROM.update(21, motors[1].getPosition());
-  EEPROM.update(22, motors[2].getPosition());
-  EEPROM.update(23, motors[3].getPosition());
-  EEPROM.update(24, motors[4].getPosition());
-  EEPROM.update(25, motors[5].getPosition());
-
-  EEPROM.update(30, motors[0].getPosition()>>8);
-  EEPROM.update(31, motors[1].getPosition()>>8);
-  EEPROM.update(32, motors[2].getPosition()>>8);
-  EEPROM.update(33, motors[3].getPosition()>>8);
-  EEPROM.update(34, motors[4].getPosition()>>8);
-  EEPROM.update(35, motors[5].getPosition()>>8);
-
-  EEPROM.update(40, motors[0].getSensorSensitivity());
-  EEPROM.update(41, motors[1].getSensorSensitivity());
-  EEPROM.update(42, motors[2].getSensorSensitivity());
-  EEPROM.update(43, motors[3].getSensorSensitivity());
-  EEPROM.update(44, motors[4].getSensorSensitivity());
-  EEPROM.update(45, motors[5].getSensorSensitivity());
-
-}
-
-static void stopDemo()
-{
-  // Delete the blinking task if it exists
-  if (demoTaskHandle != NULL) {
-  vTaskResume(printTaskHandle);
-  vTaskSuspend(demoTaskHandle);
+      motors[i].setSpeed(speed);
+      motors[i].setPosition(positionLow | (positionHigh << 8));
+      motors[i].setSensorSensitivity(sensorSensitivity);
   }
 }
 
-static void startDemo()
+static void saveConfiguration(const String& command)
+{
+  for(int i = 0; i < MOTOR_COUNT; i++) {
+      int speedAddress = SPEED_OFFSET + i;
+      int positionLowAddress = POSITION_LOW_OFFSET + i;
+      int positionHighAddress = POSITION_HIGH_OFFSET + i;
+      int sensorSensitivityAddress = SENSOR_SENSITIVITY_OFFSET + i;
+
+      int speed = motors[i].getSpeed();
+      int position = motors[i].getPosition();
+      int sensorSensitivity = motors[i].getSensorSensitivity();
+
+      EEPROM.write(speedAddress, speed);
+      EEPROM.write(positionLowAddress, position & 0xFF);  // Low byte
+      EEPROM.write(positionHighAddress, (position >> 8) & 0xFF);  // High byte
+      EEPROM.write(sensorSensitivityAddress, sensorSensitivity);
+  }
+  EEPROM.commit();
+}
+
+static void stopDemo(const String& command)
+{
+  // Delete the blinking task if it exists
+  if (demoTaskHandle != NULL) {
+    vTaskResume(printTaskHandle);
+    vTaskSuspend(demoTaskHandle);
+  }
+}
+
+static void startDemo(const String& command)
 {
   vTaskSuspend(printTaskHandle);
   vTaskResume(demoTaskHandle);
