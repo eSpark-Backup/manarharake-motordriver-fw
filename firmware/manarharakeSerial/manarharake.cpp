@@ -14,30 +14,20 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 #include "motor_control.hpp"
+#include "serial_commands.hpp"
 
 /* Prototypes */
 static void printTask(void *pvParameters);
 static void demoTask(void *pvParameters);
 static void mainTask(void *pvParameters);
 
-static void printConfiguration();
-static void setMotor(const String& command);
-static void setSensor(const String& command);
-static void queryMotor(const String& command);
-static void querySensor(const String& command);
-static void setResistor(const String& command);
-static void loadConfiguration(const String& command);
-static void saveConfiguration(const String& command);
-static void startDemo(const String& command);
-static void stopDemo(const String& command);
-static void executeArray(char command);
-
 // Global variables
 TaskHandle_t demoTaskHandle = NULL;  // Handle for the blinking task
 TaskHandle_t mainTaskHandle = NULL;   // Handle for the blinking task
 TaskHandle_t printTaskHandle = NULL;   // Handle for the blinking task
 
-Motor motors[6] = {
+// Definition of static member variable
+Motor Manarharake::motor[6] = {
     Motor(100, 0, 5, M1_PIN), // Motor 1
     Motor(100, 0, 5, M2_PIN), // Motor 2
     Motor(100, 0, 5, M3_PIN), // Motor 3
@@ -46,73 +36,34 @@ Motor motors[6] = {
     Motor(100, 0, 5, M6_PIN)  // Motor 6
 };
 
-
-// // Array to store motor positions and speeds for each array letter
-// const MotorsConfig motorConfiguration[7] = {
-//     {{{700, 255}, {500, 255}, {700, 255}, {0, 255}, {0, 255}, {0, 255}}},   // A
-//     {{{700, 255}, {1000, 255}, {700, 255}, {700, 255}, {0, 255}, {0, 255}}}, // B
-//     {{{900, 255}, {900, 255}, {900, 255}, {900, 255}, {900, 255}, {900, 255}}}, // C
-//     {{{0, 255}, {500, 255}, {900, 255}, {900, 255}, {900, 255}, {900, 255}}}, // D
-//     {{{800, 255}, {500, 255}, {500, 255}, {0, 255}, {0, 255}, {0, 255}}},     // E
-//     {{{700, 255}, {700, 255}, {850, 255}, {850, 255}, {850, 255}, {850, 255}}}, // F
-//     {{{0, 255}, {0, 255}, {0, 255}, {0, 255}, {0, 255}, {0, 255}}}             // G
-// };
-
-// Define MotorSettings structure
-struct MotorSettings {
-    int position;
-    int speed;
+SerialCommand commands[] = {
+  {SET_MOTOR_CMD      , Manarharake::setMotor          },
+  {SET_SENSOR_CMD     , Manarharake::setSensor         },
+  {QUERY_MOTOR_CMD    , Manarharake::queryMotor        },
+  {QUERY_SENSOR_CMD   , Manarharake::querySensor       },
+  {SET_RESISTANCE_CMD , Manarharake::setResistor       },
+  {START_DEMO_CMD     , Manarharake::startDemo         },
+  {STOP_DEMO_CMD      , Manarharake::stopDemo          },
+  {SAVE_CONFIG_CMD    , Manarharake::saveConfiguration },
+  {LOAD_CONFIG_CMD    , Manarharake::loadConfiguration }
 };
-
-// Define MotorsConfig structure
-struct MotorsConfig {
-    MotorSettings array_motors[6];
-};
-
-// Array to store motor positions and speeds for each array letter
-const MotorsConfig motorConfiguration[7] = {
-    {{{700,   0   },    {500,   50  }, {700,  100 }, {0,    150 }, {0,    200 }, {0,    255 }}},    // A
-    {{{700,   150 },    {1000,  0   }, {700,  255 }, {700,  150 }, {0,    255 }, {0,    255 }}},    // B
-    {{{900,   255 },    {900,   255 }, {900,  0   }, {900,  255 }, {900,  255 }, {900,  255 }}},    // C
-    {{{0,     255 },    {500,   150 }, {900,  180 }, {900,  0   }, {900,  255 }, {900,  255 }}},    // D
-    {{{800,   180 },    {500,   255 }, {500,  255 }, {0,    150 }, {0,    0   }, {0,    255 }}},    // E
-    {{{700,   255 },    {700,   255 }, {850,  255 }, {850,  255 }, {850,  180 }, {850,  0   }}},    // F
-    {{{0,     0   },    {0,     50  }, {0,    50  }, {0,    0   }, {0,    50  }, {0,    0   }}}     // G
-};
-
-
-
 
 void Manarharake::initalize()
 {
     Serial.begin(115200);
     EEPROM.begin(100);
+
     // Create Tasks
     xTaskCreate(printTask, "printTask", 2*2048, NULL, 0, &printTaskHandle);
     xTaskCreate(mainTask, "mainTask", 2*2048, NULL, 1, &mainTaskHandle);
     xTaskCreate(demoTask, "BlinkLED", 2*2048, NULL, 2, &demoTaskHandle);
     vTaskSuspend(demoTaskHandle);
     // vTaskStartScheduler();
+
     loadConfiguration("NULL");
     Serial.println("Controller Started");
 }
 
-struct SerialCommand{
-  char* commandString;
-  void(*commandCallback)(const String& command);
-};
-
-SerialCommand commands[] = {
-  {SET_MOTOR_CMD      , setMotor          },
-  {SET_SENSOR_CMD     , setSensor         },
-  {QUERY_MOTOR_CMD    , queryMotor        },
-  {QUERY_SENSOR_CMD   , querySensor       },
-  {SET_RESISTANCE_CMD , setResistor       },
-  {START_DEMO_CMD     , startDemo         },
-  {STOP_DEMO_CMD      , stopDemo          },
-  {SAVE_CONFIG_CMD    , saveConfiguration },
-  {LOAD_CONFIG_CMD    , loadConfiguration }
-};
 
 
 static void mainTask(void *pvParameters) {
@@ -130,7 +81,7 @@ static void mainTask(void *pvParameters) {
         }
       }
       if (command.charAt(0) >= CONFIG_A && command.charAt(0) <= CONFIG_G) {
-          executeArray(command.charAt(0));  // Call executeArray function for array commands
+          Manarharake::executeArray(command.charAt(0));  // Call executeArray function for array commands
       }
     }
     vTaskDelay(10);
@@ -146,11 +97,11 @@ static void demoTask(void *pvParameters)
   for(;;) {
     for (int i = 0; i < 6; i++) {
       demoArray = char(CONFIG_A + i);
-      executeArray(demoArray); // Execute arrays A-F sequentially
+      Manarharake::executeArray(demoArray); // Execute arrays A-F sequentially
       vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
       
       demoArray = CONFIG_G;
-      executeArray(demoArray); // Execute array G after arrays A-F
+      Manarharake::executeArray(demoArray); // Execute array G after arrays A-F
       vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
     }
   }
@@ -162,12 +113,12 @@ static void printTask(void *pvParameters)
   for(;;)
   {
     vTaskDelay(500 / portTICK_PERIOD_MS);
-    printConfiguration();
+    Manarharake::printConfiguration();
     vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 
-static void printConfiguration() 
+void Manarharake::printConfiguration() 
 {
   // Print total configuration for all 6 motors and sensors
   Serial.println("Total Configuration:");
@@ -175,18 +126,18 @@ static void printConfiguration()
   for (int i = 0; i < MOTOR_COUNT; i++) {
     Serial.print(i + 1);
     Serial.print(": Speed=");
-    Serial.print(motors[i].getSpeed());
+    Serial.print(motor[i].getSpeed());
     Serial.print(", Pos=");
-    Serial.print(motors[i].getPosition());
+    Serial.print(motor[i].getPosition());
     Serial.print(", Sensor ");
     Serial.print(i + 1);
     Serial.print(": Sens=");
-    Serial.println(motors[i].getSensorSensitivity());
+    Serial.println(motor[i].getSensorSensitivity());
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
 
-static void executeArray(char command) 
+void Manarharake::executeArray(char command) 
 {
   char arrayLetter = command;
   if (arrayLetter < CONFIG_A || arrayLetter > CONFIG_G) {
@@ -197,7 +148,7 @@ static void executeArray(char command)
   int arrayIndex = arrayLetter - CONFIG_A; // Calculate array index
   
   // Execute movements for each motor
-  for (int i = 0; i < sizeof(motors)/sizeof(motors[0]); i++) {
+  for (int i = 0; i < MOTOR_COUNT; i++) {
 
 
     int position = motorConfiguration[arrayIndex].array_motors[i].position; // Get position value for motor i
@@ -214,12 +165,12 @@ static void executeArray(char command)
       case 5: motorNumber = MOTOR_4; break;
     }
     
-    motors[motorNumber - 1].setSpeed(speed); // Set speed for motor i
-    motors[motorNumber - 1].setPosition(position); // Set speed for motor i
+    motor[motorNumber - 1].setSpeed(speed); // Set speed for motor i
+    motor[motorNumber - 1].setPosition(position); // Set speed for motor i
   }
 }
 
-static void loadConfiguration(const String& command)
+void Manarharake::loadConfiguration(const String& command)
 {
   for(int i = 0; i < MOTOR_COUNT; i++) {
       int speedAddress = SPEED_OFFSET + i;
@@ -232,13 +183,13 @@ static void loadConfiguration(const String& command)
       int positionHigh = EEPROM.read(positionHighAddress);
       int sensorSensitivity = EEPROM.read(sensorSensitivityAddress);
 
-      motors[i].setSpeed(speed);
-      motors[i].setPosition(positionLow | (positionHigh << 8));
-      motors[i].setSensorSensitivity(sensorSensitivity);
+      motor[i].setSpeed(speed);
+      motor[i].setPosition(positionLow | (positionHigh << 8));
+      motor[i].setSensorSensitivity(sensorSensitivity);
   }
 }
 
-static void saveConfiguration(const String& command)
+void Manarharake::saveConfiguration(const String& command)
 {
   for(int i = 0; i < MOTOR_COUNT; i++) {
       int speedAddress = SPEED_OFFSET + i;
@@ -246,9 +197,9 @@ static void saveConfiguration(const String& command)
       int positionHighAddress = POSITION_HIGH_OFFSET + i;
       int sensorSensitivityAddress = SENSOR_SENSITIVITY_OFFSET + i;
 
-      int speed = motors[i].getSpeed();
-      int position = motors[i].getPosition();
-      int sensorSensitivity = motors[i].getSensorSensitivity();
+      int speed = motor[i].getSpeed();
+      int position = motor[i].getPosition();
+      int sensorSensitivity = motor[i].getSensorSensitivity();
 
       EEPROM.write(speedAddress, speed);
       EEPROM.write(positionLowAddress, position & 0xFF);  // Low byte
@@ -258,7 +209,7 @@ static void saveConfiguration(const String& command)
   EEPROM.commit();
 }
 
-static void stopDemo(const String& command)
+void Manarharake::stopDemo(const String& command)
 {
   // Delete the blinking task if it exists
   if (demoTaskHandle != NULL) {
@@ -268,7 +219,7 @@ static void stopDemo(const String& command)
   }
 }
 
-static void startDemo(const String& command)
+void Manarharake::startDemo(const String& command)
 {
   vTaskSuspend(printTaskHandle);
   vTaskResume(demoTaskHandle);
@@ -308,7 +259,7 @@ void parseCommand(const String& command, int& motorNum, String& queryType, Strin
     }
 }
 
-static void queryMotor(const String& command) {
+void Manarharake::queryMotor(const String& command) {
     int motorNum;
     String queryType = COMMAND_TYPE_2;
 
@@ -316,14 +267,14 @@ static void queryMotor(const String& command) {
 
     if (!queryType.isEmpty()) {
         if (queryType.equals(PARAM1)) {
-            Serial.println(motors[motorNum - 1].getSpeed());
+            Serial.println(motor[motorNum - 1].getSpeed());
         } else if (queryType.equals(PARAM2)) {
-            Serial.println(motors[motorNum - 1].getPosition());
+            Serial.println(motor[motorNum - 1].getPosition());
         }
     }
 }
 
-static void querySensor(const String& command) 
+void Manarharake::querySensor(const String& command) 
 {
     int sensorIndex;
     String queryType = COMMAND_TYPE_2;
@@ -332,12 +283,12 @@ static void querySensor(const String& command)
 
     if (!queryType.isEmpty()) {
       if (queryType.equals(PARAM3)) {
-          Serial.println(motors[sensorIndex - 1].getSensorSensitivity());
+          Serial.println(motor[sensorIndex - 1].getSensorSensitivity());
       }
     }
 }
 
-static void setMotor(const String& command) 
+void Manarharake::setMotor(const String& command) 
 {
     int val;
     int motorNum;
@@ -348,14 +299,14 @@ static void setMotor(const String& command)
 
     if (!queryType.isEmpty()) {
       if (queryType.equals(PARAM1)) {
-        motors[motorNum - 1].setSpeed(val);
+        motor[motorNum - 1].setSpeed(val);
       } else if (queryType.equals(PARAM2)) {
-        motors[motorNum - 1].setPosition(val);
+        motor[motorNum - 1].setPosition(val);
       }
     }
 }
 
-static void setSensor(const String& command) 
+void Manarharake::setSensor(const String& command) 
 {
     int val;
     int sensorIndex;
@@ -366,12 +317,12 @@ static void setSensor(const String& command)
 
     if (!queryType.isEmpty()) {
       if (queryType.equals(PARAM3)) {
-        motors[sensorIndex - 1].setSensorSensitivity(val);
+        motor[sensorIndex - 1].setSensorSensitivity(val);
       }
     }
 }
 
-static void setResistor(const String& command) 
+void Manarharake::setResistor(const String& command) 
 {
     // Find the index of the comma
     int commaIndex = command.indexOf(',');

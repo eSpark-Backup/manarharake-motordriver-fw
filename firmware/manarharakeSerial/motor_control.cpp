@@ -33,3 +33,8 @@ int Motor::getPosition() {
 int Motor::getSensorSensitivity() {
     return sensorSensitivity;
 }
+
+void Motor::setPin(int pin)
+{
+    pinMode(pin, OUTPUT);
+}

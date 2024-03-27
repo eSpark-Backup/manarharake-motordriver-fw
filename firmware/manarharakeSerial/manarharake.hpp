@@ -1,6 +1,9 @@
 #ifndef MANARHARAKE_H
 #define MANARHARAKE_H
 
+#include "motor_control.hpp"
+#include <Arduino.h>
+
 #define CONFIG_A   'A' 
 #define CONFIG_B   'B' 
 #define CONFIG_C   'C' 
@@ -30,7 +33,7 @@ enum MOTOR_INDEX {
 #define POSITION_HIGH_OFFSET 30
 #define SENSOR_SENSITIVITY_OFFSET 40
 
-#define MOTOR_COUNT sizeof(motors)/sizeof(motors[0])
+#define MOTOR_COUNT sizeof(motor)/sizeof(motor[0])
 
 /* Current Commands */
 #define SET_COM         "SET"
@@ -73,11 +76,20 @@ enum MOTOR_INDEX {
 
 class Manarharake{
     private:
+        static Motor motor[6];
     public:
         void initalize();
+        static void printConfiguration();
+        static void executeArray(char command);
+        static void setMotor(const String& command);
+        static void setSensor(const String& command);
+        static void queryMotor(const String& command);
+        static void querySensor(const String& command);
+        static void setResistor(const String& command);
+        static void loadConfiguration(const String& command);
+        static void saveConfiguration(const String& command);
+        static void startDemo(const String& command);
+        static void stopDemo(const String& command);
 };
-
-
-
 
 #endif //MANARHARAKE_H
