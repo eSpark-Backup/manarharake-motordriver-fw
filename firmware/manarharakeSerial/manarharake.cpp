@@ -30,7 +30,7 @@ static void loadConfiguration(const String& command);
 static void saveConfiguration(const String& command);
 static void startDemo(const String& command);
 static void stopDemo(const String& command);
-static void executeArray(String command);
+static void executeArray(char command);
 
 // Global variables
 TaskHandle_t demoTaskHandle = NULL;  // Handle for the blinking task
@@ -92,7 +92,7 @@ void Manarharake::initalize()
     xTaskCreate(mainTask, "mainTask", 2*2048, NULL, 1, &mainTaskHandle);
     xTaskCreate(demoTask, "BlinkLED", 2*2048, NULL, 2, &demoTaskHandle);
     vTaskSuspend(demoTaskHandle);
-    vTaskStartScheduler();
+    // vTaskStartScheduler();
     loadConfiguration("NULL");
     Serial.println("Controller Started");
 }
@@ -103,15 +103,15 @@ struct SerialCommand{
 };
 
 SerialCommand commands[] = {
-  {"SET MOTOR", setMotor},
-  {"SET SENSOR", setSensor},
-  {"QUERY MOTOR", queryMotor},
-  {"QUERY SENSOR", querySensor},
-  {"SET R", setResistor},
-  {"START DEMO", startDemo},
-  {"STOP DEMO", stopDemo},
-  {"SAVE CONFIG", saveConfiguration},
-  {"LOAD CONFIG", loadConfiguration}
+  {SET_MOTOR_CMD      , setMotor          },
+  {SET_SENSOR_CMD     , setSensor         },
+  {QUERY_MOTOR_CMD    , queryMotor        },
+  {QUERY_SENSOR_CMD   , querySensor       },
+  {SET_RESISTANCE_CMD , setResistor       },
+  {START_DEMO_CMD     , startDemo         },
+  {STOP_DEMO_CMD      , stopDemo          },
+  {SAVE_CONFIG_CMD    , saveConfiguration },
+  {LOAD_CONFIG_CMD    , loadConfiguration }
 };
 
 
@@ -125,11 +125,12 @@ static void mainTask(void *pvParameters) {
         if(command.startsWith(commands[i].commandString))
         {
           commands[i].commandCallback(command);
-          break;
-        } else if (command.charAt(0) >= CONFIG_A && command.charAt(0) <= CONFIG_G) {
-          executeArray(command);  // Call executeArray function for array commands
+          command = "";
           break;
         }
+      }
+      if (command.charAt(0) >= CONFIG_A && command.charAt(0) <= CONFIG_G) {
+          executeArray(command.charAt(0));  // Call executeArray function for array commands
       }
     }
     vTaskDelay(10);
@@ -145,11 +146,11 @@ static void demoTask(void *pvParameters)
   for(;;) {
     for (int i = 0; i < 6; i++) {
       demoArray = char(CONFIG_A + i);
-      executeArray(String(demoArray)); // Execute arrays A-F sequentially
+      executeArray(demoArray); // Execute arrays A-F sequentially
       vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
       
       demoArray = CONFIG_G;
-      executeArray(String(demoArray)); // Execute array G after arrays A-F
+      executeArray(demoArray); // Execute array G after arrays A-F
       vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
     }
   }
@@ -185,9 +186,9 @@ static void printConfiguration()
   }
 }
 
-static void executeArray(String command) 
+static void executeArray(char command) 
 {
-  char arrayLetter = command.charAt(0); // Extract array letter from command
+  char arrayLetter = command;
   if (arrayLetter < CONFIG_A || arrayLetter > CONFIG_G) {
     Serial.println("Invalid array letter.");
     return; // Exit the function if the array letter is invalid
@@ -197,8 +198,7 @@ static void executeArray(String command)
   
   // Execute movements for each motor
   for (int i = 0; i < sizeof(motors)/sizeof(motors[0]); i++) {
-    // int position = motorConfiguration[arrayIndex][i * 2]; // Get position value for motor i
-    // int speed = motorConfiguration[arrayIndex][i * 2 + 1]; // Get speed value for motor i
+
 
     int position = motorConfiguration[arrayIndex].array_motors[i].position; // Get position value for motor i
     int speed = motorConfiguration[arrayIndex].array_motors[i].speed; // Get speed value for motor i
@@ -264,6 +264,7 @@ static void stopDemo(const String& command)
   if (demoTaskHandle != NULL) {
     vTaskResume(printTaskHandle);
     vTaskSuspend(demoTaskHandle);
+    loadConfiguration("NULL");
   }
 }
 
@@ -273,87 +274,100 @@ static void startDemo(const String& command)
   vTaskResume(demoTaskHandle);
 }
 
-static void setSensor(const String& command) 
-{
-    int sensorNumIndex = command.indexOf("SENSOR") + 7;
-    int sensitivityIndex = command.indexOf("SENSITIVITY");
-    if (sensorNumIndex == -1 || sensitivityIndex == -1) {
-        Serial.println("sensor number or sensitivity is missing");
-        return; // Exit if either sensor number or sensitivity is missing
+void parseCommand(const String& command, int& motorNum, String& queryType, String queryFor, int* val = NULL, int* motorIndex = NULL) {
+
+    int value = 0;
+    int keyIndex = command.indexOf(queryFor);
+    if (keyIndex == -1) {
+        return; // Key not found
     }
+    int motorNumIndex = keyIndex + queryFor.length() + 1;
 
-    int sensorNum = command.substring(sensorNumIndex, sensitivityIndex).toInt();
-    if (sensorNum < 1 || sensorNum > 6) {
-        Serial.println("sensor number is invalid");
-        return; // Exit if the sensor number is invalid
-    }
-
-    int sensitivity = command.substring(sensitivityIndex + 12).toInt();
-    motors[sensorNum - 1].setSensorSensitivity(sensitivity);
-}
-
-static void queryMotor(const String& command) 
-{
-    int motorNumIndex = command.indexOf("MOTOR") + 6;
-    int queryTypeIndex = command.indexOf("QUERY");
+    // int motorNumIndex = command.indexOf(ITEM_1) + 6; //QUERY MOTOR 1 SPEED
+    int queryTypeIndex = command.indexOf(queryType);
 
     if (motorNumIndex == -1 || queryTypeIndex == -1) {
         return; // Exit if motor number is missing
     }
 
-    int motorNum = command.substring(motorNumIndex, queryTypeIndex - 1).toInt();
+    motorNum = command.substring(motorNumIndex, queryTypeIndex - 1).toInt();
     if (motorNum < 1 || motorNum > 6) {
         return; // Exit if the motor number is invalid
     }
+    if(motorIndex)
+    {
+      *motorIndex = motorNum;
+    }
 
-    if (command.indexOf("SPEED") != -1) {
-        motors[motorNum - 1].getSpeed();
-    } else if (command.indexOf("POSITION") != -1) {
-        motors[motorNum - 1].getPosition();
+    COMMAND_ADD_PARAM(PARAM1)
+    COMMAND_ADD_PARAM(PARAM2)
+    COMMAND_ADD_PARAM(PARAM3)
+
+    if(val){
+      *val = value;
+    }
+}
+
+static void queryMotor(const String& command) {
+    int motorNum;
+    String queryType = COMMAND_TYPE_2;
+
+    parseCommand(command, motorNum, queryType, ITEM_1, NULL);
+
+    if (!queryType.isEmpty()) {
+        if (queryType.equals(PARAM1)) {
+            Serial.println(motors[motorNum - 1].getSpeed());
+        } else if (queryType.equals(PARAM2)) {
+            Serial.println(motors[motorNum - 1].getPosition());
+        }
     }
 }
 
 static void querySensor(const String& command) 
 {
-    int sensorNumIndex = command.indexOf("SENSOR") + 6;
+    int sensorIndex;
+    String queryType = COMMAND_TYPE_2;
 
-    if (sensorNumIndex == -1) {
-        return; // Exit if sensor number is missing
+    parseCommand(command, sensorIndex, queryType, ITEM_2, NULL);
+
+    if (!queryType.isEmpty()) {
+      if (queryType.equals(PARAM3)) {
+          Serial.println(motors[sensorIndex - 1].getSensorSensitivity());
+      }
     }
-
-    int sensorNum = command.substring(sensorNumIndex).toInt();
-    if (sensorNum < 1 || sensorNum > 6) {
-        return; // Exit if the sensor number is invalid
-    }
-
-    motors[sensorNum - 1].getSensorSensitivity();
 }
 
 static void setMotor(const String& command) 
 {
-    int motorNumIndex = command.indexOf("MOTOR") + 6;
-    int positionIndex = command.indexOf("POSITION");
-    int speedIndex = command.indexOf("SPEED");
+    int val;
+    int motorNum;
+    int index;
+    String queryType = COMMAND_TYPE_1;
 
-    if (motorNumIndex == -1 || (positionIndex == -1 && speedIndex == -1)) {
-        Serial.println("attribute is missing");
-        return; // Exit if any required attribute is missing
+    parseCommand(command, index, queryType, ITEM_1, &val, &motorNum);
+
+    if (!queryType.isEmpty()) {
+      if (queryType.equals(PARAM1)) {
+        motors[motorNum - 1].setSpeed(val);
+      } else if (queryType.equals(PARAM2)) {
+        motors[motorNum - 1].setPosition(val);
+      }
     }
+}
 
-    int motorNum = command.substring(motorNumIndex, min(positionIndex, speedIndex)).toInt();
-    if (motorNum < 1 || motorNum > 6) {
-        Serial.println("motor number is invalid");
-        return; // Exit if the motor number is invalid
-    }
+static void setSensor(const String& command) 
+{
+    int val;
+    int sensorIndex;
+    int index;
+    String queryType = COMMAND_TYPE_1;
 
-    if (positionIndex != -1) {
-        int position = command.substring(positionIndex + 9).toInt();
-        motors[motorNum - 1].setPosition(position);
-    }
+    parseCommand(command, index, queryType, ITEM_2, &val, &sensorIndex);
 
-    if (speedIndex != -1) {
-        int speed = command.substring(speedIndex + 6).toInt();
-        motors[motorNum - 1].setSpeed(speed);
+    if (!queryType.isEmpty()) {
+      if (queryType.equals(PARAM3)) {
+        motors[sensorIndex - 1].setSensorSensitivity(val);
+      }
     }
 }
 
