@@ -20,22 +20,33 @@
 static void printTask(void *pvParameters);
 static void demoTask(void *pvParameters);
 static void mainTask(void *pvParameters);
+static void checkFsrTask(void *pvParameters);
 
 // Global variables
-TaskHandle_t demoTaskHandle = NULL;  // Handle for the blinking task
-TaskHandle_t mainTaskHandle = NULL;   // Handle for the blinking task
-TaskHandle_t printTaskHandle = NULL;   // Handle for the blinking task
+TaskHandle_t demoTaskHandle = NULL;  // Handle for the Array demo task
+TaskHandle_t mainTaskHandle = NULL;   // Handle for the main task
+TaskHandle_t printTaskHandle = NULL;   // Handle for the print config task
+TaskHandle_t fsrTaskHandle = NULL;   // Handle for the check fsr task
 
+// Definition FSR object to be assigned to pointer
+ForceSensitiveResistor fsr[FSR_COUNT] = {
+  ForceSensitiveResistor(FSR1_PIN),
+  ForceSensitiveResistor(FSR2_PIN),
+  ForceSensitiveResistor(FSR3_PIN),
+  ForceSensitiveResistor(FSR4_PIN),
+  ForceSensitiveResistor(FSR5_PIN),
+};
 // Definition of static member variable
-Motor Manarharake::motor[6] = {
-    Motor(100, 0, 5, M1_PIN), // Motor 1
-    Motor(100, 0, 5, M2_PIN), // Motor 2
-    Motor(100, 0, 5, M3_PIN), // Motor 3
-    Motor(100, 0, 5, M4_PIN), // Motor 4
-    Motor(100, 0, 5, M5_PIN), // Motor 5
-    Motor(100, 0, 5, M6_PIN)  // Motor 6
+Motor Manarharake::motor[MOTOR_COUNT] = {
+    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, &fsr[0]), // Motor 1
+    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, &fsr[1]), // Motor 2
+    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, &fsr[2]), // Motor 3
+    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, &fsr[3]), // Motor 4
+    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, &fsr[4]), // Motor 5
+    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, &fsr[4])  // Motor 6
 };
 
+// Command List
 SerialCommand commands[] = {
   {SET_MOTOR_CMD      , Manarharake::setMotor          },
   {SET_SENSOR_CMD     , Manarharake::setSensor         },
@@ -58,10 +69,11 @@ void Manarharake::initalize()
     xTaskCreate(mainTask, "mainTask", 2*2048, NULL, 1, &mainTaskHandle);
     xTaskCreate(demoTask, "BlinkLED", 2*2048, NULL, 2, &demoTaskHandle);
     vTaskSuspend(demoTaskHandle);
+    xTaskCreate(checkFsrTask, "fsrTask", 2*2048, NULL, 2, &fsrTaskHandle);
     // vTaskStartScheduler();
 
     loadConfiguration("NULL");
-    Serial.println("Controller Started");
+    MH_LOG_LN("Controller Started");
 }
 
 
@@ -95,7 +107,7 @@ static void demoTask(void *pvParameters)
 
   char demoArray;
   for(;;) {
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < MOTOR_COUNT; i++) {
       demoArray = char(CONFIG_A + i);
       Manarharake::executeArray(demoArray); // Execute arrays A-F sequentially
       vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
@@ -118,21 +130,42 @@ static void printTask(void *pvParameters)
   }
 }
 
+static void checkFsrTask(void *pvParameters)
+{
+  (void) pvParameters;
+  for(;;)
+  {
+      Manarharake::checkFsrThreshold();
+      vTaskDelay(10);
+  }
+}
+
+void Manarharake::checkFsrThreshold()
+{
+    for(int i = 0; i < MOTOR_COUNT; i++)
+    {
+      motor[i].checkFsr();
+    }
+}
+
+
 void Manarharake::printConfiguration() 
 {
   // Print total configuration for all 6 motors and sensors
-  Serial.println("Total Configuration:");
+  MH_LOG_LN("Total Configuration:");
 
   for (int i = 0; i < MOTOR_COUNT; i++) {
-    Serial.print(i + 1);
-    Serial.print(": Speed=");
-    Serial.print(motor[i].getSpeed());
-    Serial.print(", Pos=");
-    Serial.print(motor[i].getPosition());
-    Serial.print(", Sensor ");
-    Serial.print(i + 1);
-    Serial.print(": Sens=");
-    Serial.println(motor[i].getSensorSensitivity());
+    MH_LOG(i + 1);
+    MH_LOG(": Speed = ");
+    MH_LOG(motor[i].getSpeed());
+    MH_LOG("\t, Pos =");
+    MH_LOG(motor[i].getPosition());
+    MH_LOG("\t, Sensor ");
+    MH_LOG(i + 1);
+    MH_LOG(": Current Sens Lvl = ");
+    MH_LOG(motor[i].fsr->readFsrSens()); //Read current Analog level
+    MH_LOG("\t: Sens =");
+    MH_LOG_LN(motor[i].getSensorSensitivity());
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
@@ -141,7 +174,7 @@ void Manarharake::executeArray(char command)
 {
   char arrayLetter = command;
   if (arrayLetter < CONFIG_A || arrayLetter > CONFIG_G) {
-    Serial.println("Invalid array letter.");
+    MH_LOG_LN("Invalid array letter.");
     return; // Exit the function if the array letter is invalid
   }
   
@@ -267,9 +300,9 @@ void Manarharake::queryMotor(const String& command) {
 
     if (!queryType.isEmpty()) {
         if (queryType.equals(PARAM1)) {
-            Serial.println(motor[motorNum - 1].getSpeed());
+            MH_LOG_LN(motor[motorNum - 1].getSpeed());
         } else if (queryType.equals(PARAM2)) {
-            Serial.println(motor[motorNum - 1].getPosition());
+            MH_LOG_LN(motor[motorNum - 1].getPosition());
         }
     }
 }
@@ -283,7 +316,7 @@ void Manarharake::querySensor(const String& command)
 
     if (!queryType.isEmpty()) {
       if (queryType.equals(PARAM3)) {
-          Serial.println(motor[sensorIndex - 1].getSensorSensitivity());
+          MH_LOG_LN(motor[sensorIndex - 1].getSensorSensitivity());
       }
     }
 }
@@ -342,17 +375,17 @@ void Manarharake::setResistor(const String& command)
             // Set the resistor value (replace this with actual implementation)
             // Example:
             // setResistorValue(resistorNum, value);
-            Serial.print("Resistor ");
-            Serial.print(resistorNum);
-            Serial.print(" set to value ");
-            Serial.println(value);
+            MH_LOG("Resistor ");
+            MH_LOG(resistorNum);
+            MH_LOG(" set to value ");
+            MH_LOG_LN(value);
         } else {
             // Invalid resistor number
-            Serial.print("Invalid resistor number.");
-            Serial.println(resistorNumStr);
+            MH_LOG("Invalid resistor number.");
+            MH_LOG_LN(resistorNumStr);
         }
     } else {
         // Incorrect command format
-        Serial.println("Incorrect command format.");
+        MH_LOG_LN("Incorrect command format.");
     }
 }

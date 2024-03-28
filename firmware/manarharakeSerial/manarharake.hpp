@@ -2,6 +2,7 @@
 #define MANARHARAKE_H
 
 #include "motor_control.hpp"
+#include "fsr.hpp"
 #include <Arduino.h>
 
 #define CONFIG_A   'A' 
@@ -12,20 +13,14 @@
 #define CONFIG_F   'F' 
 #define CONFIG_G   'G' 
 
-// #define MOTOR_1     1
-// #define MOTOR_2     2
-// #define MOTOR_3     3
-// #define MOTOR_4     4
-// #define MOTOR_5     5
-// #define MOTOR_6     6
-
 enum MOTOR_INDEX {
     MOTOR_1 = 1,
     MOTOR_2,
     MOTOR_3,
     MOTOR_4,
     MOTOR_5,
-    MOTOR_6
+    MOTOR_6,
+    MOTOR_MAX = 6
  };
 
 #define SPEED_OFFSET 10
@@ -33,7 +28,8 @@ enum MOTOR_INDEX {
 #define POSITION_HIGH_OFFSET 30
 #define SENSOR_SENSITIVITY_OFFSET 40
 
-#define MOTOR_COUNT sizeof(motor)/sizeof(motor[0])
+// #define MOTOR_COUNT sizeof(Manarharake::motor)/sizeof(Manarharake::motor[0])
+#define MOTOR_COUNT MOTOR_MAX
 
 /* Current Commands */
 #define SET_COM         "SET"
@@ -74,6 +70,11 @@ enum MOTOR_INDEX {
         value = command.substring(command.indexOf(x) + strlen(x)).toInt(); \
     }
 
+#define DEFAULT_SPEED       100
+#define DEFAULT_POSITION    0
+#define DEFAULT_SENSITIVITY 1
+
+
 class Manarharake{
     private:
         static Motor motor[6];
@@ -90,6 +91,7 @@ class Manarharake{
         static void saveConfiguration(const String& command);
         static void startDemo(const String& command);
         static void stopDemo(const String& command);
+        static void checkFsrThreshold();
 };
 
 #endif //MANARHARAKE_H

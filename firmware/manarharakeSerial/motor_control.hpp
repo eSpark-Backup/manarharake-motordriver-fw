@@ -1,6 +1,8 @@
 #ifndef MOTOR_H
 #define MOTOR_H
 
+#include "fsr.hpp"
+
 // Pin definition for ESP32
 #define M1_PIN  23
 #define M2_PIN  22
@@ -9,34 +11,46 @@
 #define M5_PIN  5
 #define M6_PIN  16
 
-class Motor {
-private:
-    int speed;
-    int position;
-    int sensorSensitivity;
-    int pin;
-
-public:
-    Motor(int initialSpeed, int initialPosition, int initialSensorSensitivity, int pin);
-
-    void setSpeed(int newSpeed);
-    void setPosition(int newPosition);
-    void setSensorSensitivity(int newSensitivity);
-    void setPin(int pin);
-    int getSpeed();
-    int getPosition();
-    int getSensorSensitivity();
-};
+#define STOP_SPEED              0
+#define LOW_SPEED               100
+#define HIGH_SPEED              255
+#define MAX_POSITION            1000
+#define MIN_POSITION            0
 
 // Define MotorSettings structure
 struct MotorSettings {
     int position;
     int speed;
+    int fsrSens;
+    int pin;
+};
+
+struct FsrSettings {
+    int sensitivity;
 };
 
 // Define MotorsConfig structure
 struct MotorsConfig {
-    MotorSettings array_motors[6];
+    MotorSettings   array_motors[6];
+};
+
+class Motor {
+private:
+    MotorSettings   motorSetting;
+public:
+    ForceSensitiveResistor *fsr;
+    Motor(int initialSpeed, int initialPosition, int initialSensorSensitivity, int pin, ForceSensitiveResistor* fsrPtr);
+
+    void setSpeed(int newSpeed);
+    void _setSpeed(int speed);
+    void setPosition(int newPosition);
+    void _setPosition(int pos);
+    void setSensorSensitivity(int newSensitivity);
+    void setPin(int pin);
+    int getSpeed();
+    int getPosition();
+    int getSensorSensitivity();
+    void checkFsr();
 };
 
 // // Array to store motor positions and speeds for each array letter
@@ -50,9 +64,9 @@ struct MotorsConfig {
 //     {{{0, 255}, {0, 255}, {0, 255}, {0, 255}, {0, 255}, {0, 255}}}             // G
 // };
 
-
+#define MOTOR_ARRAY_CONF_COUNT  7
 // Array to store motor positions and speeds for each array letter
-const MotorsConfig motorConfiguration[7] = {
+const MotorsConfig motorConfiguration[MOTOR_ARRAY_CONF_COUNT] = {
     {{{700,   0   },    {500,   50  }, {700,  100 }, {0,    150 }, {0,    200 }, {0,    255 }}},    // A
     {{{700,   150 },    {1000,  0   }, {700,  255 }, {700,  150 }, {0,    255 }, {0,    255 }}},    // B
     {{{900,   255 },    {900,   255 }, {900,  0   }, {900,  255 }, {900,  255 }, {900,  255 }}},    // C
