@@ -9,7 +9,7 @@
 // #define BOARD TEENSY_BOARD
 #define BOARD ESP32_BOARD
 
-#define DEBUG 1
+#define DEBUG true
 
 #if (DEBUG)
 #define MH_LOG(x)       Serial.print(x)

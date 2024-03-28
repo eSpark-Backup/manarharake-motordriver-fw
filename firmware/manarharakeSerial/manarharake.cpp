@@ -62,7 +62,11 @@ SerialCommand commands[] = {
 void Manarharake::initalize()
 {
     Serial.begin(115200);
+    #if(BOARD == TEENSY_BOARD)
+    EEPROM.begin();
+    #else
     EEPROM.begin(100);
+    #endif
 
     // Create Tasks
     xTaskCreate(printTask, "printTask", 2*2048, NULL, 0, &printTaskHandle);
@@ -239,7 +243,9 @@ void Manarharake::saveConfiguration(const String& command)
       EEPROM.write(positionHighAddress, (position >> 8) & 0xFF);  // High byte
       EEPROM.write(sensorSensitivityAddress, sensorSensitivity);
   }
+  #if(BOARD !=  TEENSY_BOARD)
   EEPROM.commit();
+  #endif
 }
 
 void Manarharake::stopDemo(const String& command)
@@ -283,6 +289,7 @@ void parseCommand(const String& command, int& motorNum, String& queryType, Strin
       *motorIndex = motorNum;
     }
 
+    queryType = "";
     COMMAND_ADD_PARAM(PARAM1)
     COMMAND_ADD_PARAM(PARAM2)
     COMMAND_ADD_PARAM(PARAM3)
@@ -298,7 +305,7 @@ void Manarharake::queryMotor(const String& command) {
 
     parseCommand(command, motorNum, queryType, ITEM_1, NULL);
 
-    if (!queryType.isEmpty()) {
+    if (queryType != "") {
         if (queryType.equals(PARAM1)) {
             MH_LOG_LN(motor[motorNum - 1].getSpeed());
         } else if (queryType.equals(PARAM2)) {
@@ -314,7 +321,7 @@ void Manarharake::querySensor(const String& command)
 
     parseCommand(command, sensorIndex, queryType, ITEM_2, NULL);
 
-    if (!queryType.isEmpty()) {
+    if (queryType != "") {
       if (queryType.equals(PARAM3)) {
           MH_LOG_LN(motor[sensorIndex - 1].getSensorSensitivity());
       }
@@ -330,7 +337,7 @@ void Manarharake::setMotor(const String& command)
 
     parseCommand(command, index, queryType, ITEM_1, &val, &motorNum);
 
-    if (!queryType.isEmpty()) {
+    if (queryType != "") {
       if (queryType.equals(PARAM1)) {
         motor[motorNum - 1].setSpeed(val);
       } else if (queryType.equals(PARAM2)) {
@@ -348,7 +355,7 @@ void Manarharake::setSensor(const String& command)
 
     parseCommand(command, index, queryType, ITEM_2, &val, &sensorIndex);
 
-    if (!queryType.isEmpty()) {
+    if (queryType != "") {
       if (queryType.equals(PARAM3)) {
         motor[sensorIndex - 1].setSensorSensitivity(val);
       }

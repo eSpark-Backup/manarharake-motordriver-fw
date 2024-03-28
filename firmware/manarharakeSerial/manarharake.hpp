@@ -62,7 +62,7 @@ enum MOTOR_INDEX {
 #define START_DEMO_CMD      "START DEMO"
 #define STOP_DEMO_CMD       "STOP DEMO"
 #define LOAD_CONFIG_CMD     "LOAD CONFIG"
-#define SAVE_CONFIG_CMD      "SAVE CONFIG"
+#define SAVE_CONFIG_CMD     "SAVE CONFIG"
 
 #define COMMAND_ADD_PARAM(x) \
     if (command.indexOf(x) != -1) { \
@@ -70,8 +70,6 @@ enum MOTOR_INDEX {
         value = command.substring(command.indexOf(x) + strlen(x)).toInt(); \
     }
 
-#define DEFAULT_SPEED       100
-#define DEFAULT_POSITION    0
 #define DEFAULT_SENSITIVITY 1
 
 
