@@ -1,13 +1,16 @@
 #include "motor_control.hpp"
 #include <Arduino.h>
+#include "board.h"
 
-Motor::Motor(int initialSpeed, int initialPosition, int initialSensorSensitivity, int initialPin, ForceSensitiveResistor* fsrPtr) {
-    motorSetting.speed = initialSpeed;
-    motorSetting.position = initialPosition;
+Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr) {
+    motorSetting.speed = initialMotorSetting.speed;
+    motorSetting.position = initialMotorSetting.position;
     fsr = fsrPtr;
-    fsr->setFsrSenLvl(initialSensorSensitivity);
-    motorSetting.pin = initialPin;
-    pinMode(initialPin, OUTPUT);
+    fsr->setFsrSenLvl(initialMotorSetting.fsrSens);
+    motorSetting.pin = initialMotorSetting.pin;
+    motorSetting.pin2 = initialMotorSetting.pin2;
+    pinMode(motorSetting.pin, OUTPUT);
+    pinMode(motorSetting.pin2, OUTPUT);
 }
 
 void Motor::setSpeed(int newSpeed) {
@@ -16,8 +19,20 @@ void Motor::setSpeed(int newSpeed) {
 }
 
 void Motor::_setSpeed(int speed) {
-    //Motor Control Logic TODO:
-    analogWrite(motorSetting.pin, speed);
+    if(emergencyHalt) return;
+    if(motorSetting.direction == CW)
+    {
+        analogWrite(motorSetting.pin,   speed);
+        analogWrite(motorSetting.pin2,  0);
+    }
+    else if(motorSetting.direction == CCW) {
+        analogWrite(motorSetting.pin,  0);
+        analogWrite(motorSetting.pin2,   speed);
+    }
+}
+
+void Motor::setDirection(bool dir) {
+    motorSetting.direction = dir;
 }
 
 void Motor::setPosition(int newPosition) {
@@ -55,5 +70,21 @@ void Motor::checkFsr()
     if(fsr->sensitivityReached())
     {
         Motor::_setSpeed(STOP_SPEED);
+        emergencyHalt = true;
+        MH_LOG_LN("EMERGENCY_HALT");
     }
+}
+
+int Motor::readCurrentFsrVal()
+{
+  return fsr->readFsrSens();
+}
+
+void Motor::run() {
+    _setSpeed(motorSetting.speed);
+}
+
+void Motor::stop()
+{
+    _setSpeed(0);
 }

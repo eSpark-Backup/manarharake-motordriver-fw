@@ -12,6 +12,9 @@
 #define FSR4_PIN        35
 #define FSR5_PIN        32
 
+#define DEFAULT_SENSITIVITY 1
+
+
 class ForceSensitiveResistor{
     private:
         int sensitivtyLevel;

@@ -21,12 +21,14 @@ static void printTask(void *pvParameters);
 static void demoTask(void *pvParameters);
 static void mainTask(void *pvParameters);
 static void checkFsrTask(void *pvParameters);
+static void maintainPosTask(void *pvParameters);
 
 // Global variables
 TaskHandle_t demoTaskHandle = NULL;  // Handle for the Array demo task
 TaskHandle_t mainTaskHandle = NULL;   // Handle for the main task
 TaskHandle_t printTaskHandle = NULL;   // Handle for the print config task
 TaskHandle_t fsrTaskHandle = NULL;   // Handle for the check fsr task
+TaskHandle_t maintainPosTaskHandle = NULL;   // Handle for the maintain motor pos task
 
 // Definition FSR object to be assigned to pointer
 ForceSensitiveResistor fsr[FSR_COUNT] = {
@@ -38,12 +40,12 @@ ForceSensitiveResistor fsr[FSR_COUNT] = {
 };
 // Definition of static member variable
 Motor Manarharake::motor[MOTOR_COUNT] = {
-    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, &fsr[0]), // Motor 1
-    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, &fsr[1]), // Motor 2
-    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, &fsr[2]), // Motor 3
-    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, &fsr[3]), // Motor 4
-    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, &fsr[4]), // Motor 5
-    Motor(DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, &fsr[4])  // Motor 6
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2}, &fsr[0]), // Motor 1
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2}, &fsr[1]), // Motor 2
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2}, &fsr[2]), // Motor 3
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2}, &fsr[3]), // Motor 4
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2}, &fsr[4]), // Motor 5
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2}, &fsr[4])  // Motor 6
 };
 
 // Command List
@@ -61,19 +63,21 @@ SerialCommand commands[] = {
 
 void Manarharake::initalize()
 {
-    Serial.begin(115200);
+    Serial.begin(BAUDRATE);
     #if(BOARD == TEENSY_BOARD)
     EEPROM.begin();
     #else
-    EEPROM.begin(100);
+    EEPROM.begin(EEPROM_SIZE_BYTES);
     #endif
 
     // Create Tasks
     xTaskCreate(printTask, "printTask", 2*2048, NULL, 0, &printTaskHandle);
     xTaskCreate(mainTask, "mainTask", 2*2048, NULL, 1, &mainTaskHandle);
-    xTaskCreate(demoTask, "BlinkLED", 2*2048, NULL, 2, &demoTaskHandle);
+    xTaskCreate(demoTask, "arrayDemoTask", 2*2048, NULL, 2, &demoTaskHandle);
     vTaskSuspend(demoTaskHandle);
     xTaskCreate(checkFsrTask, "fsrTask", 2*2048, NULL, 2, &fsrTaskHandle);
+    vTaskSuspend(fsrTaskHandle);
+    xTaskCreate(maintainPosTask, "MotorPosition", 2*2048, NULL, 3, &maintainPosTaskHandle);
     // vTaskStartScheduler();
 
     loadConfiguration("NULL");
@@ -137,6 +141,7 @@ static void printTask(void *pvParameters)
 static void checkFsrTask(void *pvParameters)
 {
   (void) pvParameters;
+  vTaskDelay(1000/portTICK_PERIOD_MS);
   for(;;)
   {
       Manarharake::checkFsrThreshold();
@@ -152,6 +157,39 @@ void Manarharake::checkFsrThreshold()
     }
 }
 
+uint16_t global_encoder[MOTOR_COUNT] = {0}; //0 - 65535 3FF = 1023 //TODO: Proper Encode Implementation
+
+static void maintainPosTask(void *pvParameters)
+{
+  (void) pvParameters;
+  for(;;)
+  {
+      Manarharake::maintainPos();
+      vTaskDelay(10);
+  }
+}
+
+void Manarharake::maintainPos()
+{
+  for(int i = 0; i < MOTOR_COUNT; i++)
+  {
+    global_encoder[i] &= 0x3FF;  
+    if(global_encoder[i] < motor[i].getPosition())
+    {
+      motor[i].setDirection(CW);
+      motor[i].run();
+      global_encoder[i]++;
+    }
+    if(global_encoder[i] > motor[i].getPosition()){
+      motor[i].setDirection(CCW);
+      motor[i].run();
+      global_encoder[i]--;
+    }
+    if(global_encoder[i] == motor[i].getPosition()){
+      motor[i].stop();
+    }
+  }
+}
 
 void Manarharake::printConfiguration() 
 {
@@ -167,9 +205,11 @@ void Manarharake::printConfiguration()
     MH_LOG("\t, Sensor ");
     MH_LOG(i + 1);
     MH_LOG(": Current Sens Lvl = ");
-    MH_LOG(motor[i].fsr->readFsrSens()); //Read current Analog level
+    MH_LOG(motor[i].readCurrentFsrVal()); //Read current Analog level
     MH_LOG("\t: Sens =");
-    MH_LOG_LN(motor[i].getSensorSensitivity());
+    MH_LOG(motor[i].getSensorSensitivity());
+    MH_LOG("\t Encoder Position ");
+    MH_LOG_LN(global_encoder[i]);
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
@@ -250,18 +290,19 @@ void Manarharake::saveConfiguration(const String& command)
 
 void Manarharake::stopDemo(const String& command)
 {
-  // Delete the blinking task if it exists
   if (demoTaskHandle != NULL) {
-    vTaskResume(printTaskHandle);
+    // vTaskResume(printTaskHandle);
     vTaskSuspend(demoTaskHandle);
+    vTaskSuspend(fsrTaskHandle);
     loadConfiguration("NULL");
   }
 }
 
 void Manarharake::startDemo(const String& command)
 {
-  vTaskSuspend(printTaskHandle);
+  // vTaskSuspend(printTaskHandle);
   vTaskResume(demoTaskHandle);
+  vTaskResume(fsrTaskHandle);
 }
 
 void parseCommand(const String& command, int& motorNum, String& queryType, String queryFor, int* val = NULL, int* motorIndex = NULL) {
