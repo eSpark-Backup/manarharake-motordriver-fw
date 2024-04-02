@@ -15,6 +15,8 @@
 #include <EEPROM.h>
 #include "motor_control.hpp"
 #include "serial_commands.hpp"
+#include "encoder.hpp"
+
 
 /* Prototypes */
 static void printTask(void *pvParameters);
@@ -38,15 +40,20 @@ ForceSensitiveResistor fsr[FSR_COUNT] = {
   ForceSensitiveResistor(FSR4_PIN),
   ForceSensitiveResistor(FSR5_PIN),
 };
+
+// Instantiate the RotaryEncoder class for each encoder
+RotaryEncoder encoder1(ENCODER1_PINA, ENCODER1_PINB);
+
 // Definition of static member variable
 Motor Manarharake::motor[MOTOR_COUNT] = {
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2}, &fsr[0]), // Motor 1
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2}, &fsr[1]), // Motor 2
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2}, &fsr[2]), // Motor 3
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2}, &fsr[3]), // Motor 4
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2}, &fsr[4]), // Motor 5
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2}, &fsr[4])  // Motor 6
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2}, &fsr[0], &encoder1), // Motor 1
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2}, &fsr[1], &encoder1), // Motor 2
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2}, &fsr[2], &encoder1), // Motor 3
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2}, &fsr[3], &encoder1), // Motor 4
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2}, &fsr[4], &encoder1), // Motor 5
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2}, &fsr[4], &encoder1)  // Motor 6
 };
+
 
 // Command List
 SerialCommand commands[] = {
@@ -69,6 +76,11 @@ void Manarharake::initalize()
     #else
     EEPROM.begin(EEPROM_SIZE_BYTES);
     #endif
+
+    // for(int i = 0; i < MOTOR_COUNT; i++)
+    // {
+      motor[0].begin();
+    // }
 
     // Create Tasks
     xTaskCreate(printTask, "printTask", 2*2048, NULL, 0, &printTaskHandle);
@@ -157,7 +169,6 @@ void Manarharake::checkFsrThreshold()
     }
 }
 
-uint16_t global_encoder[MOTOR_COUNT] = {0}; //0 - 65535 3FF = 1023 //TODO: Proper Encode Implementation
 
 static void maintainPosTask(void *pvParameters)
 {
@@ -173,19 +184,16 @@ void Manarharake::maintainPos()
 {
   for(int i = 0; i < MOTOR_COUNT; i++)
   {
-    global_encoder[i] &= 0x3FF;  
-    if(global_encoder[i] < motor[i].getPosition())
+    if(motor[i].getCurrentPostion() < motor[i].getPositionSetting())
     {
       motor[i].setDirection(CW);
       motor[i].run();
-      global_encoder[i]++;
     }
-    if(global_encoder[i] > motor[i].getPosition()){
+    if(motor[i].getCurrentPostion() > motor[i].getPositionSetting()){
       motor[i].setDirection(CCW);
       motor[i].run();
-      global_encoder[i]--;
     }
-    if(global_encoder[i] == motor[i].getPosition()){
+    if(motor[i].getCurrentPostion() == motor[i].getPositionSetting()){
       motor[i].stop();
     }
   }
@@ -199,17 +207,19 @@ void Manarharake::printConfiguration()
   for (int i = 0; i < MOTOR_COUNT; i++) {
     MH_LOG(i + 1);
     MH_LOG(": Speed = ");
-    MH_LOG(motor[i].getSpeed());
+    MH_LOG(motor[i].getSpeedSetting());
     MH_LOG("\t, Pos =");
-    MH_LOG(motor[i].getPosition());
+    MH_LOG(motor[i].getPositionSetting());
     MH_LOG("\t, Sensor ");
     MH_LOG(i + 1);
     MH_LOG(": Current Sens Lvl = ");
     MH_LOG(motor[i].readCurrentFsrVal()); //Read current Analog level
     MH_LOG("\t: Sens =");
     MH_LOG(motor[i].getSensorSensitivity());
-    MH_LOG("\t Encoder Position ");
-    MH_LOG_LN(global_encoder[i]);
+    MH_LOG("\t: Angle =");
+    MH_LOG(motor[i].getMotorAngle());
+    MH_LOG("\t Motor Current Position ");
+    MH_LOG_LN(motor[i].getCurrentPostion());
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
@@ -274,8 +284,8 @@ void Manarharake::saveConfiguration(const String& command)
       int positionHighAddress = POSITION_HIGH_OFFSET + i;
       int sensorSensitivityAddress = SENSOR_SENSITIVITY_OFFSET + i;
 
-      int speed = motor[i].getSpeed();
-      int position = motor[i].getPosition();
+      int speed = motor[i].getSpeedSetting();
+      int position = motor[i].getPositionSetting();
       int sensorSensitivity = motor[i].getSensorSensitivity();
 
       EEPROM.write(speedAddress, speed);
@@ -348,9 +358,9 @@ void Manarharake::queryMotor(const String& command) {
 
     if (queryType != "") {
         if (queryType.equals(PARAM1)) {
-            MH_LOG_LN(motor[motorNum - 1].getSpeed());
+            MH_LOG_LN(motor[motorNum - 1].getSpeedSetting());
         } else if (queryType.equals(PARAM2)) {
-            MH_LOG_LN(motor[motorNum - 1].getPosition());
+            MH_LOG_LN(motor[motorNum - 1].getPositionSetting());
         }
     }
 }

@@ -2,7 +2,7 @@
 #define MOTOR_H
 
 #include "fsr.hpp"
-
+#include "encoder.hpp"
 // Pin definition for ESP32
 #define M1_PIN      23
 #define M2_PIN      21
@@ -30,6 +30,7 @@
 #define CCW                     0
 #define MOTOR_DIRECTION         CW
 
+
 // Define MotorSettings structure
 struct MotorSettings {
     int position;
@@ -38,10 +39,6 @@ struct MotorSettings {
     int pin;
     int pin2;
     bool direction = MOTOR_DIRECTION;
-};
-
-struct FsrSettings {
-    int sensitivity;
 };
 
 // Define MotorsConfig structure
@@ -53,10 +50,15 @@ class Motor {
 private:
     MotorSettings   motorSetting;
     ForceSensitiveResistor *fsr;
+    RotaryEncoder *encoder;
+    int currentPosition;
     bool emergencyHalt = false;
+    int angle;
+    int rotations;
 public:
-    Motor(MotorSettings initalMotorSetting, ForceSensitiveResistor* fsrPtr);
+    Motor(MotorSettings initalMotorSetting, ForceSensitiveResistor* fsrPtr, RotaryEncoder *encoderPtr);
 
+    void begin();
     void setPin(int pin);
     void setSpeed(int newSpeed);
     void _setSpeed(int speed);
@@ -66,11 +68,14 @@ public:
     int  readCurrentFsrVal();
     void setSensorSensitivity(int newSensitivity);
     int  getSensorSensitivity();
-    int  getSpeed();
-    int  getPosition();
+    int  getSpeedSetting();
+    int  getPositionSetting();
+    int  getCurrentPostion();
     void run();
     void stop();
     void checkFsr();
+
+    int getMotorAngle();
 };
 
 #define MOTOR_ARRAY_CONF_COUNT  7
