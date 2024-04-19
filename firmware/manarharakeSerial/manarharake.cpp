@@ -9,6 +9,8 @@
 #if  (BOARD == ESP32_BOARD)
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_system.h"
+#include "esp_sleep.h"
 #endif
 
 #include <Arduino.h>
@@ -16,6 +18,7 @@
 #include "motor_control.hpp"
 #include "serial_commands.hpp"
 #include "encoder.hpp"
+#include "rtc_mem.hpp"
 
 
 /* Prototypes */
@@ -31,6 +34,15 @@ TaskHandle_t mainTaskHandle = NULL;   // Handle for the main task
 TaskHandle_t printTaskHandle = NULL;   // Handle for the print config task
 TaskHandle_t fsrTaskHandle = NULL;   // Handle for the check fsr task
 TaskHandle_t maintainPosTaskHandle = NULL;   // Handle for the maintain motor pos task
+
+// Define 4 32-bit registers and 128bit motorData struct
+#if(BOARD == ESP32_BOARD)
+RTC_DATA_ATTR static uint32_t registers[4] = {0};
+#else if(BOARD == TEENSY_BOARD)
+uint32_t *NVRAM_UINT32 ((uint32_t *)0x400D4100);
+uint32_t *registers = NVRAM_UINT32;
+#endif
+MotorData rtcMotorDataBuffer;
 
 // Definition FSR object to be assigned to pointer
 ForceSensitiveResistor fsr[FSR_COUNT] = {
@@ -54,33 +66,77 @@ Motor Manarharake::motor[MOTOR_COUNT] = {
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2}, &fsr[4], &encoder1)  // Motor 6
 };
 
+void sleepFcn(const String& command) //For testing RTC logic
+{
+  #if(BOARD == ESP32_BOARD)
+  esp_deep_sleep(10000000);
+  #endif
+}
+
 
 // Command List
 SerialCommand commands[] = {
-  {SET_MOTOR_CMD      , Manarharake::setMotor          },
-  {SET_SENSOR_CMD     , Manarharake::setSensor         },
-  {QUERY_MOTOR_CMD    , Manarharake::queryMotor        },
-  {QUERY_SENSOR_CMD   , Manarharake::querySensor       },
-  {SET_RESISTANCE_CMD , Manarharake::setResistor       },
-  {START_DEMO_CMD     , Manarharake::startDemo         },
-  {STOP_DEMO_CMD      , Manarharake::stopDemo          },
-  {SAVE_CONFIG_CMD    , Manarharake::saveConfiguration },
-  {LOAD_CONFIG_CMD    , Manarharake::loadConfiguration }
+  {SET_MOTOR_CMD      , Manarharake::setMotor           },
+  {SET_SENSOR_CMD     , Manarharake::setSensor          },
+  {QUERY_MOTOR_CMD    , Manarharake::queryMotor         },
+  {QUERY_SENSOR_CMD   , Manarharake::querySensor        },
+  {SET_RESISTANCE_CMD , Manarharake::setResistor        },
+  {START_DEMO_CMD     , Manarharake::startDemo          },
+  {STOP_DEMO_CMD      , Manarharake::stopDemo           },
+  {SAVE_CONFIG_CMD    , Manarharake::saveConfiguration  },
+  {LOAD_CONFIG_CMD    , Manarharake::loadConfiguration  },
+  {"SLEEP"            , sleepFcn                        }, //For testing RTC Data saving logic
 };
 
 void Manarharake::initalize()
 {
-    Serial.begin(BAUDRATE);
+    Serial.begin(BAUDRATE); 
     #if(BOARD == TEENSY_BOARD)
     EEPROM.begin();
-    #else
+    SNVS_LPCR |= (1 << 24); //Enable NVRAM - documented in SDK[/B]  
+    if(CrashReport)
+    {
+      MH_LOG("Reset Reason : "); 
+      MH_LOG_LN(CrashReport); //TODO: Check crashreport then load from RTC if required
+      loadMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
+      for(int i = 0; i < MOTOR_COUNT; i++)
+      {
+        int *encoderVal = (int*)malloc(sizeof(int));
+        getMotorData(&rtcMotorDataBuffer, i, encoderVal);
+        int _encPos = *encoderVal;
+        MH_LOG("Encoder Val = ");
+        MH_LOG(_encPos);
+        motor[i].setEncoder(_encPos);
+        free(encoderVal);
+      }
+    }
+    #else if(BOARD == ESP32_BOARD)
     EEPROM.begin(EEPROM_SIZE_BYTES);
+
+    MH_LOG("Reset Reason : ");
+
+    if(esp_reset_reason() == ESP_RST_DEEPSLEEP)
+    {
+      MH_LOG("Deep Sleep");
+      loadMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
+      for(int i = 0; i < MOTOR_COUNT; i++)
+      {
+        int *encoderVal = (int*)malloc(sizeof(int));
+        getMotorData(&rtcMotorDataBuffer, i, encoderVal);
+        int _encPos = *encoderVal;
+        motor[i].setEncoder(_encPos);
+        free(encoderVal);
+        MH_LOG("Encoder Val = ");
+        MH_LOG(_encPos);
+        delay(2000); //FIXME:
+      }
+    }
     #endif
 
-    // for(int i = 0; i < MOTOR_COUNT; i++)
-    // {
+    for(int i = 0; i < MOTOR_COUNT; i++)
+    {
       motor[0].begin();
-    // }
+    }
 
     // Create Tasks
     xTaskCreate(printTask, "printTask", 2*2048, NULL, 0, &printTaskHandle);
@@ -90,7 +146,6 @@ void Manarharake::initalize()
     xTaskCreate(checkFsrTask, "fsrTask", 2*2048, NULL, 2, &fsrTaskHandle);
     vTaskSuspend(fsrTaskHandle);
     xTaskCreate(maintainPosTask, "MotorPosition", 2*2048, NULL, 3, &maintainPosTaskHandle);
-    // vTaskStartScheduler();
 
     loadConfiguration("NULL");
     MH_LOG_LN("Controller Started");
@@ -169,32 +224,50 @@ void Manarharake::checkFsrThreshold()
     }
 }
 
-
 static void maintainPosTask(void *pvParameters)
 {
   (void) pvParameters;
   for(;;)
   {
       Manarharake::maintainPos();
-      vTaskDelay(10);
+      vTaskDelay(1);
   }
 }
 
 void Manarharake::maintainPos()
 {
+  int _currentPos;
+  int _currentAngle;
+  int _requestedPos;
+
   for(int i = 0; i < MOTOR_COUNT; i++)
   {
-    if(motor[i].getCurrentPostion() < motor[i].getPositionSetting())
+    _currentPos = motor[i].getCurrentPostion();
+    _currentAngle = motor[i].getMotorAngle();
+    _requestedPos = motor[i].getPositionSetting();
+    
+    setMotorData(&rtcMotorDataBuffer, i, motor[i].getEncoder());
+    saveMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
+
+    if(_currentPos < _requestedPos) //Behind the required position
     {
       motor[i].setDirection(CW);
       motor[i].run();
     }
-    if(motor[i].getCurrentPostion() > motor[i].getPositionSetting()){
+    else if(_currentPos > _requestedPos){ //Ahead of requried position
       motor[i].setDirection(CCW);
       motor[i].run();
     }
-    if(motor[i].getCurrentPostion() == motor[i].getPositionSetting()){
+    else if(_currentPos == _requestedPos && _currentAngle == DEFAULT_ANGLE){ //Rev and angle both matched
       motor[i].stop();
+    }
+    else if(_currentAngle > DEFAULT_ANGLE){ //Angle > requried Angle
+      motor[i].setDirection(CCW);
+      motor[i].run();
+    }
+    else if(_currentAngle < DEFAULT_ANGLE){ //Angle < requried Angle
+      motor[i].setDirection(CW);
+      motor[i].run();
     }
   }
 }
@@ -216,9 +289,9 @@ void Manarharake::printConfiguration()
     MH_LOG(motor[i].readCurrentFsrVal()); //Read current Analog level
     MH_LOG("\t: Sens =");
     MH_LOG(motor[i].getSensorSensitivity());
-    MH_LOG("\t: Angle =");
+    MH_LOG("\t: Current Angle = ");
     MH_LOG(motor[i].getMotorAngle());
-    MH_LOG("\t Motor Current Position ");
+    MH_LOG("\t Motor Current Rev = ");
     MH_LOG_LN(motor[i].getCurrentPostion());
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }

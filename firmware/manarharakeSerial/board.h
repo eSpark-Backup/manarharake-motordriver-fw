@@ -12,8 +12,8 @@
 #define DEBUG true
 
 #if (DEBUG)
-#define MH_LOG(x)       Serial.print(x)
-#define MH_LOG_LN(x)    Serial.println(x)
+#define MH_LOG(x)           Serial.print(x)
+#define MH_LOG_LN(x)        Serial.println(x)
 #else
 #define MH_LOG(x)       
 #define MH_LOG_LN(x)    

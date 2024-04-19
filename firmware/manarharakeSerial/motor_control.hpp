@@ -29,7 +29,7 @@
 #define CW                      1
 #define CCW                     0
 #define MOTOR_DIRECTION         CW
-
+//#define DEFAULT_ANGLE           0 //Angle at which motor stops after doing requested revolutions
 
 // Define MotorSettings structure
 struct MotorSettings {
@@ -74,6 +74,12 @@ public:
     void run();
     void stop();
     void checkFsr();
+    void setEncoder(int position){
+        encoder->setEncoder(position);
+    }
+    long getEncoder(){
+        return encoder->getPosition();
+    }
 
     int getMotorAngle();
 };

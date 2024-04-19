@@ -9,7 +9,6 @@ void RotaryEncoder::begin() {
     currentStateB = digitalRead(pinB);
     previousStateA = currentStateA;
     previousStateB = currentStateB;
-    currentPosition = 0;
     instances[digitalPinToInterrupt(pinA)] = this;
     instances[digitalPinToInterrupt(pinB)] = this;
     attachInterrupt(digitalPinToInterrupt(pinA), handleEncoder, CHANGE);
@@ -17,7 +16,7 @@ void RotaryEncoder::begin() {
     Serial.println("Encoder Begin!");
 }
 
-int16_t RotaryEncoder::getPosition() {
+long RotaryEncoder::getPosition() {
     return currentPosition;
 }
 

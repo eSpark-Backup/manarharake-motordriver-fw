@@ -100,9 +100,14 @@ int Motor::getCurrentPostion()
     /* Calculate with steps per rev of encoder and gear ratio, 
     40 steps of encoder with 1:1 gear ratio = 1 turn*/
     currentPosition = ((encoder->getPosition())/ENC_STEPS_PER_REV)*MOTOR_IN_TO_OUT_RATIO;
-    rotations = encoder->getPosition()/ENC_STEPS_PER_REV;
     angle = ((int)((encoder->getPosition()/ENC_STEPS_PER_REV)*360*MOTOR_IN_TO_OUT_RATIO))%360;
+    rotations = encoder->getPosition()/ENC_STEPS_PER_REV;
     return currentPosition;
+
+    /*
+    currentPos = (encoder/enc_res)*Ratio;
+    angle = (encoder/enc_res)*360*ratio
+    */
 }
 
 int Motor::getMotorAngle()
