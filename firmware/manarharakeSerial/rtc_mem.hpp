@@ -7,6 +7,15 @@
 #define BITS_PER_ROTATION   12 // Assuming 12 bits for rotation
 #define BITS_PER_ENCODER    21
 
+enum motorIndex_t {
+    M0,
+    M1,
+    M2,
+    M3,
+    M4,
+    M5,
+};
+
 // // Define a struct to represent motor data
 // struct MotorData {
 //     signed int angle1 : BITS_PER_ANGLE;

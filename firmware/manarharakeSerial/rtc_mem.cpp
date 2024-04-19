@@ -15,22 +15,22 @@ void saveMotorData(uint32_t* registers, uint32_t* motorData) {
 
 void setMotorData(MotorData* data, int motorIndex, signed int encoderVal) {
     switch (motorIndex) {
-        case 0:
+        case M0:
             data->encoder1 = encoderVal;
             break;
-        case 1:
+        case M1:
             data->encoder2 = encoderVal;
             break;
-        case 2:
+        case M2:
             data->encoder3 = encoderVal;
             break;
-        case 3:
+        case M3:
             data->encoder4 = encoderVal;
             break;
-        case 4:
+        case M4:
             data->encoder5 = encoderVal;
             break;
-        case 5:
+        case M5:
             data->encoder6 = encoderVal;
             break;
         default:
@@ -40,22 +40,22 @@ void setMotorData(MotorData* data, int motorIndex, signed int encoderVal) {
 
 void getMotorData(const MotorData* data, int motorIndex, signed int* encoderVal) {
     switch (motorIndex) {
-        case 0:
+        case M0:
             *encoderVal = data->encoder1;
             break;
-        case 1:
+        case M1:
             *encoderVal = data->encoder2;
             break;
-        case 2:
+        case M2:
             *encoderVal = data->encoder3;
             break;
-        case 3:
+        case M3:
             *encoderVal = data->encoder4;
             break;
-        case 4:
+        case M4:
             *encoderVal = data->encoder5;
             break;
-        case 5:
+        case M5:
             *encoderVal = data->encoder6;
             break;
         default:

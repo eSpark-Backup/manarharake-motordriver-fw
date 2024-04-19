@@ -28,12 +28,12 @@ void Motor::_setSpeed(int speed) {
     if(emergencyHalt) return;
     if(motorSetting.direction == CW)
     {
-        analogWrite(motorSetting.pin,   speed);
-        analogWrite(motorSetting.pin2,  0);
+        analogWrite(motorSetting.pin,       speed);
+        analogWrite(motorSetting.pin2,      LOW);
     }
     else if(motorSetting.direction == CCW) {
-        analogWrite(motorSetting.pin,  0);
-        analogWrite(motorSetting.pin2,   speed);
+        analogWrite(motorSetting.pin,       LOW);
+        analogWrite(motorSetting.pin2,      speed);
     }
 }
 
@@ -43,11 +43,35 @@ void Motor::setDirection(bool dir) {
 
 void Motor::setPosition(int newPosition) {
     motorSetting.position = newPosition;
-    _setPosition(motorSetting.position);
 }
 
-void Motor::_setPosition(int pos) {
+void Motor::maintainPosition() {
     //Motor Position Control logic TODO:
+
+    int _currentPos    =   this->getCurrentPostion();
+    int _currentAngle  =   this->getMotorAngle();
+    int _requestedPos  =   this->getPositionSetting();
+
+    if(_currentPos < _requestedPos) //Behind the required position
+    {
+      this->setDirection(CW);
+      this->run();
+    }
+    else if(_currentPos > _requestedPos){ //Ahead of requried position
+      this->setDirection(CCW);
+      this->run();
+    }
+    else if(_currentPos == _requestedPos && _currentAngle == DEFAULT_ANGLE){ //Rev and angle both matched
+      this->stop();
+    }
+    else if(_currentAngle > DEFAULT_ANGLE){ //Angle > requried Angle
+      this->setDirection(CCW);
+      this->run();
+    }
+    else if(_currentAngle < DEFAULT_ANGLE){ //Angle < requried Angle
+      this->setDirection(CW);
+      this->run();
+    }
 }
 
 void Motor::setSensorSensitivity(int newSensitivity) {
@@ -99,14 +123,33 @@ int Motor::getCurrentPostion()
 {
     /* Calculate with steps per rev of encoder and gear ratio, 
     40 steps of encoder with 1:1 gear ratio = 1 turn*/
-    currentPosition = ((encoder->getPosition())/ENC_STEPS_PER_REV)*MOTOR_IN_TO_OUT_RATIO;
-    angle = ((int)((encoder->getPosition()/ENC_STEPS_PER_REV)*360*MOTOR_IN_TO_OUT_RATIO))%360;
-    rotations = encoder->getPosition()/ENC_STEPS_PER_REV;
+
+    /*  Get encoder raw value   */
+    long _encoderVal = encoder->getPosition();
+
+    /*  Motor Position using gear ratio if used*/
+    currentPosition = (_encoderVal/ENC_STEPS_PER_REV)*MOTOR_IN_TO_OUT_RATIO;
+
+    /* Angle calculation from encoder steps*/
+    angle = ((int)(_encoderVal/ENC_STEPS_PER_REV*360*MOTOR_IN_TO_OUT_RATIO))%360;
+    
+    /* Encoder Rotations not compensating gear ratio*/
+    encoderRotations = encoder->getPosition()/ENC_STEPS_PER_REV;
+
     return currentPosition;
 
-    /*
-    currentPos = (encoder/enc_res)*Ratio;
-    angle = (encoder/enc_res)*360*ratio
+    /* FORMULA USED >>>>>>>
+    currentPos = (encoder_val/enc_res)*Ratio;
+    angle = ((encoder_val/enc_res)*360*ratio)%360 
+
+    e,g;
+    encoder count = 620
+    620/40 = 15.5
+    15.5 * 360 = 5580
+    5580 % 360 = 180
+
+    so, revs = 15, angle = 180
+
     */
 }
 

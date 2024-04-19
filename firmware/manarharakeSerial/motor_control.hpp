@@ -54,7 +54,7 @@ private:
     int currentPosition;
     bool emergencyHalt = false;
     int angle;
-    int rotations;
+    int encoderRotations;
 public:
     Motor(MotorSettings initalMotorSetting, ForceSensitiveResistor* fsrPtr, RotaryEncoder *encoderPtr);
 
@@ -63,7 +63,7 @@ public:
     void setSpeed(int newSpeed);
     void _setSpeed(int speed);
     void setPosition(int newPosition);
-    void _setPosition(int pos);
+    void maintainPosition();
     void setDirection(bool dir);
     int  readCurrentFsrVal();
     void setSensorSensitivity(int newSensitivity);

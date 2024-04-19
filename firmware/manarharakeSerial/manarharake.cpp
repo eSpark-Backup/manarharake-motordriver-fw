@@ -128,7 +128,6 @@ void Manarharake::initalize()
         free(encoderVal);
         MH_LOG("Encoder Val = ");
         MH_LOG(_encPos);
-        delay(2000); //FIXME:
       }
     }
     #endif
@@ -236,39 +235,11 @@ static void maintainPosTask(void *pvParameters)
 
 void Manarharake::maintainPos()
 {
-  int _currentPos;
-  int _currentAngle;
-  int _requestedPos;
-
   for(int i = 0; i < MOTOR_COUNT; i++)
   {
-    _currentPos = motor[i].getCurrentPostion();
-    _currentAngle = motor[i].getMotorAngle();
-    _requestedPos = motor[i].getPositionSetting();
-    
     setMotorData(&rtcMotorDataBuffer, i, motor[i].getEncoder());
     saveMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
-
-    if(_currentPos < _requestedPos) //Behind the required position
-    {
-      motor[i].setDirection(CW);
-      motor[i].run();
-    }
-    else if(_currentPos > _requestedPos){ //Ahead of requried position
-      motor[i].setDirection(CCW);
-      motor[i].run();
-    }
-    else if(_currentPos == _requestedPos && _currentAngle == DEFAULT_ANGLE){ //Rev and angle both matched
-      motor[i].stop();
-    }
-    else if(_currentAngle > DEFAULT_ANGLE){ //Angle > requried Angle
-      motor[i].setDirection(CCW);
-      motor[i].run();
-    }
-    else if(_currentAngle < DEFAULT_ANGLE){ //Angle < requried Angle
-      motor[i].setDirection(CW);
-      motor[i].run();
-    }
+    motor[i].maintainPosition();
   }
 }
 
@@ -309,24 +280,22 @@ void Manarharake::executeArray(char command)
   
   // Execute movements for each motor
   for (int i = 0; i < MOTOR_COUNT; i++) {
-
-
     int position = motorConfiguration[arrayIndex].array_motors[i].position; // Get position value for motor i
     int speed = motorConfiguration[arrayIndex].array_motors[i].speed; // Get speed value for motor i
 
     // Adjust motor number according to the changed numbering (m6, m5, m1, m2, m3, m4)
     int motorNumber;
     switch(i) {
-      case 0: motorNumber = MOTOR_6; break;
-      case 1: motorNumber = MOTOR_5; break;
-      case 2: motorNumber = MOTOR_1; break;
-      case 3: motorNumber = MOTOR_2; break;
-      case 4: motorNumber = MOTOR_3; break;
-      case 5: motorNumber = MOTOR_4; break;
+      case M0: motorNumber = MOTOR_6; break;
+      case M1: motorNumber = MOTOR_5; break;
+      case M2: motorNumber = MOTOR_1; break;
+      case M3: motorNumber = MOTOR_2; break;
+      case M4: motorNumber = MOTOR_3; break;
+      case M5: motorNumber = MOTOR_4; break;
     }
     
-    motor[motorNumber - 1].setSpeed(speed); // Set speed for motor i
-    motor[motorNumber - 1].setPosition(position); // Set speed for motor i
+    motor[motorNumber].setSpeed(speed); // Set speed for motor i
+    motor[motorNumber].setPosition(position); // Set speed for motor i
   }
 }
 

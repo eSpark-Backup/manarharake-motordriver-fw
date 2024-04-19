@@ -17,7 +17,7 @@
 #define CONFIG_G   'G' 
 
 enum MOTOR_INDEX {
-    MOTOR_1 = 1,
+    MOTOR_1 = 0,
     MOTOR_2,
     MOTOR_3,
     MOTOR_4,
@@ -26,10 +26,10 @@ enum MOTOR_INDEX {
     MOTOR_MAX = 6
  };
 
-#define SPEED_OFFSET 10
-#define POSITION_LOW_OFFSET 20
-#define POSITION_HIGH_OFFSET 30
-#define SENSOR_SENSITIVITY_OFFSET 40
+#define SPEED_OFFSET                10
+#define POSITION_LOW_OFFSET         20
+#define POSITION_HIGH_OFFSET        30
+#define SENSOR_SENSITIVITY_OFFSET   40
 
 // #define MOTOR_COUNT sizeof(Manarharake::motor)/sizeof(Manarharake::motor[0])
 #define MOTOR_COUNT MOTOR_MAX
