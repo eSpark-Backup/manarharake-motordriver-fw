@@ -100,7 +100,7 @@ void Motor::checkFsr()
     if(fsr->sensitivityReached())
     {
         Motor::_setSpeed(STOP_SPEED);
-        emergencyHalt = true;
+        setHaltState(true);
         MH_LOG_LN("EMERGENCY_HALT");
     }
 }

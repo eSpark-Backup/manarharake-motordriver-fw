@@ -80,6 +80,12 @@ public:
     long getEncoder(){
         return encoder->getPosition();
     }
+    void setHaltState(bool state){
+        emergencyHalt = state;
+    }
+    bool getHaltState(){
+        return emergencyHalt;
+    }
 
     int getMotorAngle();
 };

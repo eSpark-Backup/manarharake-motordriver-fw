@@ -263,7 +263,9 @@ void Manarharake::printConfiguration()
     MH_LOG("\t: Current Angle = ");
     MH_LOG(motor[i].getMotorAngle());
     MH_LOG("\t Motor Current Rev = ");
-    MH_LOG_LN(motor[i].getCurrentPostion());
+    MH_LOG(motor[i].getCurrentPostion());
+    MH_LOG("\t Halt : ");
+    MH_LOG_LN(motor[i].getHaltState() ? "true" : "false");
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
 }
@@ -347,6 +349,10 @@ void Manarharake::stopDemo(const String& command)
     vTaskSuspend(demoTaskHandle);
     vTaskSuspend(fsrTaskHandle);
     loadConfiguration("NULL");
+    for(int i = 0; i < MOTOR_COUNT; i++)
+    {
+      motor[i].setHaltState(false);
+    }
   }
 }
 
