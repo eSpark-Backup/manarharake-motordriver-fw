@@ -38,7 +38,7 @@ TaskHandle_t maintainPosTaskHandle = NULL;   // Handle for the maintain motor po
 // Define 4 32-bit registers and 128bit motorData struct
 #if(BOARD == ESP32_BOARD)
 RTC_DATA_ATTR static uint32_t registers[4] = {0};
-#else if(BOARD == TEENSY_BOARD)
+#elif(BOARD == TEENSY_BOARD)
 uint32_t *NVRAM_UINT32 ((uint32_t *)0x400D4100);
 uint32_t *registers = NVRAM_UINT32;
 #endif
@@ -110,7 +110,7 @@ void Manarharake::initalize()
         free(encoderVal);
       }
     }
-    #else if(BOARD == ESP32_BOARD)
+    #elif(BOARD == ESP32_BOARD)
     EEPROM.begin(EEPROM_SIZE_BYTES);
 
     MH_LOG("Reset Reason : ");

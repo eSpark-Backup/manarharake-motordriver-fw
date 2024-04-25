@@ -36,7 +36,7 @@ enum MOTOR_INDEX {
 
 class Manarharake{
     private:
-        static Motor motor[6];
+        static Motor motor[MOTOR_COUNT];
     public:
         void initalize();
         static void printConfiguration();

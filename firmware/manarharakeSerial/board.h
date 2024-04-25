@@ -6,8 +6,8 @@
 #define ESP32_BOARD     3
 
 // #define BOARD ARDUINO_BOARD
-// #define BOARD TEENSY_BOARD
-#define BOARD ESP32_BOARD
+#define BOARD TEENSY_BOARD
+// #define BOARD ESP32_BOARD
 
 #define DEBUG true
 
