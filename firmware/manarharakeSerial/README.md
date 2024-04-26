@@ -60,5 +60,17 @@ Teensy boards, along with specific libraries like FreeRTOS, can greatly enhance 
 | 2 | Teensy (for Arduino IDE 2.0.4 or later)| 1.59.0|
 
 
+## Arduino_Teensy Core Configuration
+
+1. Copy these three files from `manarharake-motordriver-fw\firmware\manarharakeSerial\modified_core_files`
+
+- core_pins.h
+- digital.c
+- pins_arduino.h
+
+2. Paste them in your arduino_teensy core which will be located in 
+   `C:\Users\{User name}\AppData\Local\Arduino15\packages\teensy\hardware\avr\1.59.0\cores\teensy4`
+
+3. Relaunch Arduino IDE and Flash.
 
 Now the code should be able to compile!
