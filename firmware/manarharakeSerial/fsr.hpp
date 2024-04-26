@@ -17,11 +17,11 @@
 
 #if (BOARD == TEENSY_BOARD)
 // Pin definition for Teensy
-#define FSR1_PIN        14
-#define FSR2_PIN        15
-#define FSR3_PIN        40
-#define FSR4_PIN        41
-#define FSR5_PIN        17
+#define FSR1_PIN        GPIO_AD_B1_02
+#define FSR2_PIN        GPIO_AD_B1_03
+#define FSR3_PIN        GPIO_AD_B1_04
+#define FSR4_PIN        GPIO_AD_B1_05
+#define FSR5_PIN        GPIO_AD_B1_06
 #endif
 
 #define DEFAULT_SENSITIVITY 1

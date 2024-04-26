@@ -23,23 +23,27 @@
 #endif
 
 #if (BOARD == TEENSY_BOARD)
-#define M1_PIN      57
-#define M2_PIN      5
-#define M3_PIN      63
-#define M4_PIN      68
-#define M5_PIN      76
-#define M6_PIN      28
+#define M1_PIN      GPIO_EMC_03
+#define M2_PIN      GPIO_EMC_08
+#define M3_PIN      GPIO_EMC_15
+#define M4_PIN      GPIO_EMC_20
+#define M5_PIN      GPIO_EMC_27 
+#define M6_PIN      GPIO_EMC_32
 
-#define M1_PIN2     2
-#define M2_PIN2     72
-#define M3_PIN2     64
-#define M4_PIN2     69
-#define M5_PIN2     77
-#define M6_PIN2     80
+#define M1_PIN2     GPIO_EMC_04
+#define M2_PIN2     GPIO_EMC_09
+#define M3_PIN2     GPIO_EMC_16
+#define M4_PIN2     GPIO_EMC_21
+#define M5_PIN2     GPIO_EMC_28
+#define M6_PIN2     GPIO_EMC_33
 
-#define M12_ENABLE_PIN  55
-#define M34_ENABLE_PIN  61
-#define M56_ENABLE_PIN  74
+#define M12_ENABLE_PIN  GPIO_EMC_00
+#define M34_ENABLE_PIN  GPIO_EMC_13
+#define M56_ENABLE_PIN  GPIO_EMC_25
+
+#define M12_FAULT_PIN   GPIO_EMC_02
+#define M34_FAULT_PIN   GPIO_EMC_14
+#define M56_FAULT_PIN   GPIO_EMC_26
 #endif
 
 
