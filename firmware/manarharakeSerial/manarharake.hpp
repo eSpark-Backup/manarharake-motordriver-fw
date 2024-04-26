@@ -5,7 +5,7 @@
 #include "fsr.hpp"
 #include <Arduino.h>
 
-#define BAUDRATE            115200
+#define BAUDRATE            9600
 #define EEPROM_SIZE_BYTES   100
 
 #define CONFIG_A   'A' 

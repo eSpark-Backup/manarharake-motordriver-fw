@@ -3,9 +3,31 @@
 
 #include <Arduino.h>
 #include <map>
-
+#include "board.h"
+#if(BOARD == ESP32_BOARD)
 #define ENCODER1_PINA           25
 #define ENCODER1_PINB           26
+#endif
+
+#if(BOARD == TEENSY_BOARD)
+#define ENCODER1_PINA           3
+#define ENCODER1_PINB           4
+
+#define ENCODER2_PINA           58
+#define ENCODER2_PINB           59
+
+#define ENCODER3_PINA           65
+#define ENCODER3_PINB           66
+
+#define ENCODER4_PINA           70
+#define ENCODER4_PINB           71
+
+#define ENCODER5_PINA           78
+#define ENCODER5_PINB           79
+
+#define ENCODER6_PINA           81
+#define ENCODER6_PINB           82
+#endif
 
 #define ENC_STEPS_PER_REV       40.0F
 

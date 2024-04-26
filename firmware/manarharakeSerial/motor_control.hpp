@@ -3,7 +3,10 @@
 
 #include "fsr.hpp"
 #include "encoder.hpp"
+#include "board.h"
 // Pin definition for ESP32
+
+#if (BOARD == ESP32_BOARD)
 #define M1_PIN      23
 #define M2_PIN      21
 #define M3_PIN      18
@@ -17,6 +20,28 @@
 #define M4_PIN2     2
 #define M5_PIN2     13
 #define M6_PIN2     14
+#endif
+
+#if (BOARD == TEENSY_BOARD)
+#define M1_PIN      57
+#define M2_PIN      5
+#define M3_PIN      63
+#define M4_PIN      68
+#define M5_PIN      76
+#define M6_PIN      28
+
+#define M1_PIN2     2
+#define M2_PIN2     72
+#define M3_PIN2     64
+#define M4_PIN2     69
+#define M5_PIN2     77
+#define M6_PIN2     80
+
+#define M12_ENABLE_PIN  55
+#define M34_ENABLE_PIN  61
+#define M56_ENABLE_PIN  74
+#endif
+
 
 #define STOP_SPEED              0
 #define LOW_SPEED               100

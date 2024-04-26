@@ -52,4 +52,13 @@ Teensy boards, along with specific libraries like FreeRTOS, can greatly enhance 
 1. Once you’ve added the library, you can verify if it was installed correctly.
 2. Go to `Sketch > Include Library`. You should see "FreeRTOS-Teensy" or similar listed here.
 
+
+### Versions
+| Serial | Name    | version |
+| :---:   | :---: | :---: |
+| 1 | arduino_freertos                          | 11.0.1_v1|
+| 2 | Teensy (for Arduino IDE 2.0.4 or later)| 1.59.0|
+
+
+
 Now the code should be able to compile!
