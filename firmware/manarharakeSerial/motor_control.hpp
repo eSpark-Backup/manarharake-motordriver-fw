@@ -67,6 +67,7 @@ struct MotorSettings {
     int fsrSens;
     int pin;
     int pin2;
+    int motorEnablePin;
     bool direction = MOTOR_DIRECTION;
 };
 

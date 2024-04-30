@@ -12,6 +12,8 @@ Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr, 
     motorSetting.pin2 = initialMotorSetting.pin2;
     pinMode(motorSetting.pin, OUTPUT);
     pinMode(motorSetting.pin2, OUTPUT);
+    pinMode(motorSetting.motorEnablePin, OUTPUT);
+    digitalWrite(motorSetting.motorEnablePin, HIGH);
 }
 
 void Motor::begin()
@@ -46,7 +48,6 @@ void Motor::setPosition(int newPosition) {
 }
 
 void Motor::maintainPosition() {
-    //Motor Position Control logic TODO:
 
     int _currentPos    =   this->getCurrentPostion();
     int _currentAngle  =   this->getMotorAngle();
