@@ -26,6 +26,13 @@ enum MOTOR_INDEX {
     MOTOR_MAX = 6
  };
 
+enum DEMO_STATE {
+    DEMO_STATE_1,
+    DEMO_STATE_2,
+    DEMO_STATE_3,
+    DEMO_STATE_4,
+};
+
 #define SPEED_OFFSET                10
 #define POSITION_LOW_OFFSET         20
 #define POSITION_HIGH_OFFSET        30
@@ -37,8 +44,10 @@ enum MOTOR_INDEX {
 class Manarharake{
     private:
         static Motor motor[MOTOR_COUNT];
+        static bool demo_state;
     public:
         void initalize();
+        void loop();
         static void printConfiguration();
         static void executeArray(char command);
         static void setMotor(const String& command);

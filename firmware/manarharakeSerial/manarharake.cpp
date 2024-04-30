@@ -1,17 +1,5 @@
 #include "manarharake.hpp"
 #include "board.h"
-#if (BOARD == ARDUINO_BOARD)
-#include <Arduino_FreeRTOS.h>
-#endif
-#if (BOARD == TEENSY_BOARD)
-#include "arduino_freertos.h"
-#endif
-#if  (BOARD == ESP32_BOARD)
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
-#include "esp_sleep.h"
-#endif
 
 #include <Arduino.h>
 #include <EEPROM.h>
@@ -20,20 +8,6 @@
 #include "encoder.hpp"
 #include "rtc_mem.hpp"
 
-
-/* Prototypes */
-static void printTask(void *pvParameters);
-static void demoTask(void *pvParameters);
-static void mainTask(void *pvParameters);
-static void checkFsrTask(void *pvParameters);
-static void maintainPosTask(void *pvParameters);
-
-// Global variables
-TaskHandle_t demoTaskHandle = NULL;  // Handle for the Array demo task
-TaskHandle_t mainTaskHandle = NULL;   // Handle for the main task
-TaskHandle_t printTaskHandle = NULL;   // Handle for the print config task
-TaskHandle_t fsrTaskHandle = NULL;   // Handle for the check fsr task
-TaskHandle_t maintainPosTaskHandle = NULL;   // Handle for the maintain motor pos task
 
 // Define 4 32-bit registers and 128bit motorData struct
 #if(BOARD == ESP32_BOARD)
@@ -65,6 +39,9 @@ Motor Manarharake::motor[MOTOR_COUNT] = {
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2}, &fsr[4], &encoder1), // Motor 5
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2}, &fsr[4], &encoder1)  // Motor 6
 };
+
+//Definition of demoState
+bool Manarharake::demo_state = false;
 
 void sleepFcn(const String& command) //For testing RTC logic
 {
@@ -114,8 +91,9 @@ void Manarharake::initalize()
     EEPROM.begin(EEPROM_SIZE_BYTES);
 
     MH_LOG("Reset Reason : ");
+    MH_LOG( esp_reset_reason() ); 
 
-    if(esp_reset_reason() == ESP_RST_DEEPSLEEP)
+    if(esp_reset_reason())
     {
       MH_LOG("Deep Sleep");
       loadMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
@@ -134,27 +112,25 @@ void Manarharake::initalize()
 
     for(int i = 0; i < MOTOR_COUNT; i++)
     {
-      motor[0].begin();
+      motor[i].begin();
     }
-
-    // Create Tasks
-    xTaskCreate(printTask, "printTask", 2*2048, NULL, 0, &printTaskHandle);
-    xTaskCreate(mainTask, "mainTask", 2*2048, NULL, 1, &mainTaskHandle);
-    xTaskCreate(demoTask, "arrayDemoTask", 2*2048, NULL, 2, &demoTaskHandle);
-    vTaskSuspend(demoTaskHandle);
-    xTaskCreate(checkFsrTask, "fsrTask", 2*2048, NULL, 2, &fsrTaskHandle);
-    vTaskSuspend(fsrTaskHandle);
-    xTaskCreate(maintainPosTask, "MotorPosition", 2*2048, NULL, 3, &maintainPosTaskHandle);
 
     loadConfiguration("NULL");
     MH_LOG_LN("Controller Started");
 }
 
+unsigned long lastExecutionTime = 0;
+unsigned long currentTime;
+char demoArray = 'A';
+const char configCharArray[MOTOR_ARRAY_CONF_COUNT] = {CONFIG_A, CONFIG_B, CONFIG_C, CONFIG_D, CONFIG_E, CONFIG_F, CONFIG_G};
 
 
-static void mainTask(void *pvParameters) {
-  
-  for(;;) {
+void Manarharake::loop()
+{
+    static int caseDemoArray = 0;
+    static int counter = 0;
+    Manarharake::printConfiguration();
+
     if (Serial.available() > 0) {
       String command = Serial.readStringUntil('\n');  // Read the command until newline character
       for(int i = 0; i < sizeof(commands)/sizeof(commands[0]); i++)
@@ -170,49 +146,43 @@ static void mainTask(void *pvParameters) {
           Manarharake::executeArray(command.charAt(0));  // Call executeArray function for array commands
       }
     }
-    vTaskDelay(10);
-  }
-}
 
-// Task to execute predefined config array
-static void demoTask(void *pvParameters) 
-{
-  (void)pvParameters;
+    Manarharake::maintainPos();
 
-  char demoArray;
-  for(;;) {
-    for (int i = 0; i < MOTOR_COUNT; i++) {
-      demoArray = char(CONFIG_A + i);
-      Manarharake::executeArray(demoArray); // Execute arrays A-F sequentially
-      vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
-      
-      demoArray = CONFIG_G;
-      Manarharake::executeArray(demoArray); // Execute array G after arrays A-F
-      vTaskDelay(1000/portTICK_PERIOD_MS); // Delay 1 second
-    }
-  }
-}
-
-static void printTask(void *pvParameters) 
-{
-  (void) pvParameters;
-  for(;;)
-  {
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-    Manarharake::printConfiguration();
-    vTaskDelay(500 / portTICK_PERIOD_MS);
-  }
-}
-
-static void checkFsrTask(void *pvParameters)
-{
-  (void) pvParameters;
-  vTaskDelay(1000/portTICK_PERIOD_MS);
-  for(;;)
-  {
+    if(demo_state)
+    {
       Manarharake::checkFsrThreshold();
-      vTaskDelay(10);
-  }
+      currentTime = millis();
+
+      switch (caseDemoArray)
+      {
+        case DEMO_STATE_1:
+          demoArray = configCharArray[counter];
+          Manarharake::executeArray(demoArray); // Execute arrays A-F sequentially
+          counter ++;
+          if(counter >= MOTOR_ARRAY_CONF_COUNT)
+            counter = 0;
+          caseDemoArray = DEMO_STATE_2;
+          lastExecutionTime = currentTime;
+        break;
+        case DEMO_STATE_2:
+          if (currentTime - lastExecutionTime >= 1000) { 
+            caseDemoArray = DEMO_STATE_3;
+          }
+        break;
+        case DEMO_STATE_3:
+          Manarharake::executeArray(CONFIG_G); // Execute arrays A-F sequentially
+            caseDemoArray = DEMO_STATE_4;
+            lastExecutionTime = currentTime;
+        break;
+        case DEMO_STATE_4:
+          if (currentTime - lastExecutionTime>= 1000) { 
+            caseDemoArray = DEMO_STATE_1;
+          }
+        break;
+      }
+    }
+
 }
 
 void Manarharake::checkFsrThreshold()
@@ -221,16 +191,6 @@ void Manarharake::checkFsrThreshold()
     {
       motor[i].checkFsr();
     }
-}
-
-static void maintainPosTask(void *pvParameters)
-{
-  (void) pvParameters;
-  for(;;)
-  {
-      Manarharake::maintainPos();
-      vTaskDelay(1);
-  }
 }
 
 void Manarharake::maintainPos()
@@ -246,9 +206,10 @@ void Manarharake::maintainPos()
 void Manarharake::printConfiguration() 
 {
   // Print total configuration for all 6 motors and sensors
-  MH_LOG_LN("Total Configuration:");
+  // MH_LOG_LN("Total Configuration:");
+  static int i = 0;
 
-  for (int i = 0; i < MOTOR_COUNT; i++) {
+  // for (int i = 0; i < MOTOR_COUNT; i++) {
     MH_LOG(i + 1);
     MH_LOG(": Speed = ");
     MH_LOG(motor[i].getSpeedSetting());
@@ -266,7 +227,13 @@ void Manarharake::printConfiguration()
     MH_LOG(motor[i].getCurrentPostion());
     MH_LOG("\t Halt : ");
     MH_LOG_LN(motor[i].getHaltState() ? "true" : "false");
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    // vTaskDelay(50 / portTICK_PERIOD_MS);
+  // }
+  i++;
+  if(i >= MOTOR_COUNT)
+  {
+    MH_LOG_LN("Total Configuration:");
+    i = 0;
   }
 }
 
@@ -344,23 +311,27 @@ void Manarharake::saveConfiguration(const String& command)
 
 void Manarharake::stopDemo(const String& command)
 {
-  if (demoTaskHandle != NULL) {
+  // if (demoTaskHandle != NULL) {
     // vTaskResume(printTaskHandle);
-    vTaskSuspend(demoTaskHandle);
-    vTaskSuspend(fsrTaskHandle);
+    // vTaskSuspend(demoTaskHandle);
+    // vTaskSuspend(fsrTaskHandle);
+    demo_state = false;
     loadConfiguration("NULL");
     for(int i = 0; i < MOTOR_COUNT; i++)
     {
       motor[i].setHaltState(false);
     }
-  }
+  // }
 }
 
 void Manarharake::startDemo(const String& command)
 {
   // vTaskSuspend(printTaskHandle);
-  vTaskResume(demoTaskHandle);
-  vTaskResume(fsrTaskHandle);
+
+  // vTaskResume(demoTaskHandle);
+  // vTaskResume(fsrTaskHandle);
+
+  demo_state = true;
 }
 
 void parseCommand(const String& command, int& motorNum, String& queryType, String queryFor, int* val = NULL, int* motorIndex = NULL) {

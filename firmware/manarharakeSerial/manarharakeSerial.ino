@@ -8,6 +8,7 @@ void setup() {
 }
 
 void loop() {
+  mhController.loop();
   delay(1);
 }
 
