@@ -27,7 +27,13 @@ void Motor::setSpeed(int newSpeed) {
 }
 
 void Motor::_setSpeed(int speed) {
-    if(emergencyHalt) return;
+    if(emergencyHalt)
+    {
+        analogWrite(motorSetting.pin,       STOP_SPEED);
+        analogWrite(motorSetting.pin2,      STOP_SPEED);
+        return;
+    } 
+
     if(motorSetting.direction == CW)
     {
         analogWrite(motorSetting.pin,       speed);
@@ -49,29 +55,34 @@ void Motor::setPosition(int newPosition) {
 
 void Motor::maintainPosition() {
 
+    if(getHaltState() == true)
+    {
+        this->stop();
+        return;
+    }
+
     int _currentPos    =   this->getCurrentPostion();
     int _currentAngle  =   this->getMotorAngle();
     int _requestedPos  =   this->getPositionSetting();
+    // MH_LOG_LN(_currentPos);
+    // MH_LOG_LN(_currentAngle);
+    // MH_LOG_LN(_requestedPos);
 
-    if(_currentPos < _requestedPos) //Behind the required position
+
+    if(_currentPos == _requestedPos && _currentAngle == MOTOR_STOP_ANGLE ){ //Rev and angle both matched
+      this->stop();
+      return;
+    }
+    else if(_currentPos < _requestedPos || _currentAngle < MOTOR_STOP_ANGLE) //Behind the required position
     {
       this->setDirection(CW);
       this->run();
+      return;
     }
-    else if(_currentPos > _requestedPos){ //Ahead of requried position
+    else if(_currentPos > _requestedPos || _currentAngle > MOTOR_STOP_ANGLE){ //Ahead of requried position
       this->setDirection(CCW);
       this->run();
-    }
-    else if(_currentPos == _requestedPos && _currentAngle == DEFAULT_ANGLE){ //Rev and angle both matched
-      this->stop();
-    }
-    else if(_currentAngle > DEFAULT_ANGLE){ //Angle > requried Angle
-      this->setDirection(CCW);
-      this->run();
-    }
-    else if(_currentAngle < DEFAULT_ANGLE){ //Angle < requried Angle
-      this->setDirection(CW);
-      this->run();
+      return;
     }
 }
 
@@ -100,9 +111,12 @@ void Motor::checkFsr()
 {
     if(fsr->sensitivityReached())
     {
-        Motor::_setSpeed(STOP_SPEED);
         setHaltState(true);
         MH_LOG_LN("EMERGENCY_HALT");
+    }
+    else
+    {
+        setHaltState(false);
     }
 }
 
@@ -112,12 +126,12 @@ int Motor::readCurrentFsrVal()
 }
 
 void Motor::run() {
-    _setSpeed(motorSetting.speed);
+    _setSpeed(RUN_SPEED);
 }
 
 void Motor::stop()
 {
-    _setSpeed(0);
+    _setSpeed(STOP_SPEED);
 }
 
 int Motor::getCurrentPostion()

@@ -34,6 +34,9 @@
 #define ENCODER6_PINB           GPIO_EMC_35
 #define ENCODER6_PINZ           GPIO_EMC_36
 
+// #define ENCODER1_PINA           2
+// #define ENCODER1_PINB           3
+
 #endif
 
 #define ENC_STEPS_PER_REV       40.0F
@@ -43,7 +46,7 @@
 #define MOTOR_IN_TO_OUT_RATIO   1.0F 
 
 #define ANGLE_PER_ENC_STEP      (360.0F / ENC_STEPS_PER_REV)
-#define DEFAULT_ANGLE           0
+#define MOTOR_STOP_ANGLE           0
 
 class RotaryEncoder {
 private:

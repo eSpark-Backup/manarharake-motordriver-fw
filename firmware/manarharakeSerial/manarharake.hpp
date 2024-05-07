@@ -40,6 +40,7 @@ enum DEMO_STATE {
 
 // #define MOTOR_COUNT sizeof(Manarharake::motor)/sizeof(Manarharake::motor[0])
 #define MOTOR_COUNT MOTOR_MAX
+// #define MOTOR_COUNT 1
 
 class Manarharake{
     private:
