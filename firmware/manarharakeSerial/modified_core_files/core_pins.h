@@ -33,7 +33,7 @@
 #include "pins_arduino.h"
 
 #define HIGH			1
-#define LOW				0
+#define LOW			0
 #define INPUT			0
 #define OUTPUT			1
 #define INPUT_PULLUP		2
@@ -554,6 +554,7 @@
 #define CORE_NUM_INTERRUPT	83
 #define CORE_NUM_ANALOG		18
 #define CORE_NUM_PWM		31
+
 
 #define CORE_PIN0_BIT		3
 #define CORE_PIN1_BIT		2
@@ -1501,6 +1502,36 @@
 #define CORE_INT52_PIN		52
 #define CORE_INT53_PIN		53
 #define CORE_INT54_PIN		54
+/*new pins */
+#define CORE_INT55_PIN 55
+#define CORE_INT56_PIN 56
+#define CORE_INT57_PIN 57
+#define CORE_INT58_PIN 58
+#define CORE_INT59_PIN 59
+#define CORE_INT60_PIN 60
+#define CORE_INT61_PIN 61
+#define CORE_INT62_PIN 62
+#define CORE_INT63_PIN 63
+#define CORE_INT64_PIN 64
+#define CORE_INT65_PIN 65
+#define CORE_INT66_PIN 66
+#define CORE_INT67_PIN 67
+#define CORE_INT68_PIN 68
+#define CORE_INT69_PIN 69
+#define CORE_INT70_PIN 70
+#define CORE_INT71_PIN 71
+#define CORE_INT72_PIN 72
+#define CORE_INT73_PIN 73
+#define CORE_INT74_PIN 74
+#define CORE_INT75_PIN 75
+#define CORE_INT76_PIN 76
+#define CORE_INT77_PIN 77
+#define CORE_INT78_PIN 78
+#define CORE_INT79_PIN 79
+#define CORE_INT80_PIN 80
+#define CORE_INT81_PIN 81
+#define CORE_INT82_PIN 82
+
 #define CORE_INT_EVERY_PIN	1
 
 

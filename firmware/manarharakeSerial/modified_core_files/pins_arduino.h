@@ -92,12 +92,11 @@ static const uint8_t SCL = 19;
 #define PIN_SERIAL_RX (0)
 #define PIN_SERIAL_TX (1)
 
-
 #if defined(ARDUINO_TEENSY40)
   #define NUM_DIGITAL_PINS  40
   #define NUM_ANALOG_INPUTS 14
 #elif defined(ARDUINO_TEENSY41)
-  #define NUM_DIGITAL_PINS  55
+  #define NUM_DIGITAL_PINS  83
   #define NUM_ANALOG_INPUTS 18
 #elif defined(ARDUINO_TEENSY_MICROMOD)
   #define NUM_DIGITAL_PINS  46

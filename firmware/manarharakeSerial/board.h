@@ -38,8 +38,12 @@
 #define GPIO_EMC_24     73
 #define GPIO_EMC_25     74
 #define GPIO_EMC_26     75
-#define GPIO_EMC_27     76
-#define GPIO_EMC_28     77
+
+// #define GPIO_EMC_27     76
+// #define GPIO_EMC_28     77
+#define GPIO_EMC_27     49
+#define GPIO_EMC_28     50
+
 #define GPIO_EMC_29     78
 #define GPIO_EMC_30     79
 #define GPIO_EMC_31     29

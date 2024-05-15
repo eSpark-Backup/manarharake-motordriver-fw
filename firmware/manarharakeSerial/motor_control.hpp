@@ -23,10 +23,8 @@
 #endif
 
 #if (BOARD == TEENSY_BOARD)
-// #define M1_PIN      GPIO_EMC_03
-#define M1_PIN      GPIO_EMC_08
-// #define M2_PIN      GPIO_EMC_08
-#define M2_PIN      GPIO_EMC_03
+#define M1_PIN      GPIO_EMC_03
+#define M2_PIN      GPIO_EMC_08
 #define M3_PIN      GPIO_EMC_15
 #define M4_PIN      GPIO_EMC_20
 #define M5_PIN      GPIO_EMC_27 
