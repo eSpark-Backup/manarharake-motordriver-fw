@@ -3,7 +3,7 @@
 
 #include "motor_control.hpp"
 #include "fsr.hpp"
-#include <Arduino.h>
+//#include <Arduino.h>
 
 #define BAUDRATE            9600
 #define EEPROM_SIZE_BYTES   100
@@ -45,6 +45,7 @@ enum DEMO_STATE {
 class Manarharake{
     private:
         static Motor motor[MOTOR_COUNT];
+        static char currenConfigArray;
         static bool demo_state;
     public:
         void initalize();

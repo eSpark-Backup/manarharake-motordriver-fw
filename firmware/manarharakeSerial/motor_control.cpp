@@ -1,5 +1,5 @@
 #include "motor_control.hpp"
-#include <Arduino.h>
+//#include <Arduino.h>
 #include "board.h"
 
 Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr, RotaryEncoder *encoderPtr) {
@@ -10,15 +10,20 @@ Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr, 
     fsr->setFsrSenLvl(initialMotorSetting.fsrSens);
     motorSetting.pin = initialMotorSetting.pin;
     motorSetting.pin2 = initialMotorSetting.pin2;
-    pinMode(motorSetting.pin, OUTPUT);
-    pinMode(motorSetting.pin2, OUTPUT);
-    pinMode(motorSetting.motorEnablePin, OUTPUT);
-    digitalWrite(motorSetting.motorEnablePin, HIGH);
+    // pinMode(motorSetting.pin, OUTPUT);
+    // pinMode(motorSetting.pin2, OUTPUT);
+    // pinMode(motorSetting.motorEnablePin, OUTPUT);
+    // digitalWrite(motorSetting.motorEnablePin, HIGH);
 }
 
 void Motor::begin()
 {
+    pinMode(motorSetting.pin, OUTPUT);
+    pinMode(motorSetting.pin2, OUTPUT);
+    pinMode(motorSetting.motorEnablePin, OUTPUT);
+    digitalWrite(motorSetting.motorEnablePin, HIGH);
     encoder->begin();
+    MH_LOG_LN("Motor Begin");
 }
 
 void Motor::setSpeed(int newSpeed) {
@@ -112,7 +117,6 @@ void Motor::checkFsr()
     if(fsr->sensitivityReached())
     {
         setHaltState(true);
-        MH_LOG_LN("EMERGENCY_HALT");
     }
     else
     {
@@ -122,7 +126,7 @@ void Motor::checkFsr()
 
 int Motor::readCurrentFsrVal()
 {
-  return fsr->readFsrSens();
+  return fsr->readFsrSensMapped();
 }
 
 void Motor::run() {

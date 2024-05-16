@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include "manarharake.hpp"
 
 Manarharake mhController;
@@ -9,7 +8,6 @@ void setup() {
 
 void loop() {
   mhController.loop();
-  delay(1);
 }
 
 

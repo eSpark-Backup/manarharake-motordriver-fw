@@ -16,15 +16,19 @@ void ForceSensitiveResistor::setFsrSenLvl(int value){
     {
         sensitivtyLevel = MAX_FSR_SENS;
     }
-    else if(value < MIN_FSR_SENS)
+    else if(value <= MIN_FSR_SENS)
     {
         sensitivtyLevel = MIN_FSR_SENS;
     }
-    sensitivityRaw = map(sensitivtyLevel, MIN_FSR_SENS, MAX_FSR_SENS, 0, 4095);
+    sensitivityRaw = map(sensitivtyLevel, MIN_FSR_SENS, MAX_FSR_SENS, MIN_FSR_SENS_RAW, MAX_FSR_SENS_RAW);
 }
 int ForceSensitiveResistor::readFsrSens(){
     currentSensitivity = analogRead(fsrPin);
     return currentSensitivity;
+}
+
+int ForceSensitiveResistor::readFsrSensMapped(){
+    return map(readFsrSens(), MIN_FSR_SENS_RAW, MAX_FSR_SENS_RAW, MIN_FSR_SENS, MAX_FSR_SENS);
 }
 
 void ForceSensitiveResistor::setFsrPin(int pin) {

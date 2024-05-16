@@ -6,6 +6,9 @@
 #define MIN_FSR_SENS    1
 #define MAX_FSR_SENS    10
 
+#define MIN_FSR_SENS_RAW    0
+#define MAX_FSR_SENS_RAW    4096
+
 #if (BOARD == ESP32_BOARD)
 // Pin definition for ESP32
 #define FSR1_PIN        36
@@ -39,6 +42,7 @@ class ForceSensitiveResistor{
         void setFsrSenLvl(int value);
 
         int readFsrSens();
+        int readFsrSensMapped();
         bool sensitivityReached();
         void setFsrPin(int pin);
 };

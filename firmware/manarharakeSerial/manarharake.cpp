@@ -1,7 +1,7 @@
 #include "manarharake.hpp"
 #include "board.h"
 
-#include <Arduino.h>
+//#include <Arduino.h>
 #include <EEPROM.h>
 #include "motor_control.hpp"
 #include "serial_commands.hpp"
@@ -29,24 +29,26 @@ ForceSensitiveResistor fsr[FSR_COUNT] = {
 
 // Instantiate the RotaryEncoder class for each encoder
 RotaryEncoder encoder1(ENCODER1_PINA, ENCODER1_PINB);
-RotaryEncoder encoder2(ENCODER2_PINA, ENCODER2_PINB);
-RotaryEncoder encoder3(ENCODER3_PINA, ENCODER3_PINB);
-RotaryEncoder encoder4(ENCODER4_PINA, ENCODER4_PINB);
-RotaryEncoder encoder5(ENCODER5_PINA, ENCODER5_PINB);
-RotaryEncoder encoder6(ENCODER6_PINA, ENCODER6_PINB);
+// RotaryEncoder encoder2(ENCODER2_PINA, ENCODER2_PINB);
+// RotaryEncoder encoder3(ENCODER3_PINA, ENCODER3_PINB);
+// RotaryEncoder encoder4(ENCODER4_PINA, ENCODER4_PINB);
+// RotaryEncoder encoder5(ENCODER5_PINA, ENCODER5_PINB);
+// RotaryEncoder encoder6(ENCODER6_PINA, ENCODER6_PINB);
 
 // Definition of static member variable
 Motor Manarharake::motor[MOTOR_COUNT] = {
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2, M12_ENABLE_PIN}, &fsr[0], &encoder1), // Motor 1
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1], &encoder2), // Motor 2
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, &fsr[2], &encoder3), // Motor 3
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, &fsr[3], &encoder4), // Motor 4
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder5), // Motor 5
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder6)  // Motor 6
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1], &encoder1), // Motor 2
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, &fsr[2], &encoder1), // Motor 3
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, &fsr[3], &encoder1), // Motor 4
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder1), // Motor 5
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder1)  // Motor 6
 };
 
 //Definition of demoState
 bool Manarharake::demo_state = false;
+char Manarharake::currenConfigArray = 'X';
+
 
 void sleepFcn(const String& command) //For testing RTC logic
 {
@@ -114,10 +116,11 @@ void Manarharake::initalize()
       }
     }
     #endif
-
+    delay(2000);
     for(int i = 0; i < MOTOR_COUNT; i++)
     {
       motor[i].begin();
+      delay(100);
     }
 
     loadConfiguration("NULL");
@@ -137,7 +140,7 @@ void Manarharake::loop()
     static int counter = 0;
     currentTime = millis();
 
-    if( currentTime - lastPrintTime >= 500)
+    if( currentTime - lastPrintTime >= 160)
     {
       Manarharake::printConfiguration(); //TODO: Add timed ouptut so that print is not so fast
       lastPrintTime = currentTime;
@@ -241,6 +244,8 @@ void Manarharake::printConfiguration()
   if(i >= MOTOR_COUNT)
   {
     MH_LOG_LN("Total Configuration:");
+    MH_LOG("Active Array Config : ");
+    MH_LOG_LN(currenConfigArray);
     i = 0;
   }
 }
@@ -248,6 +253,7 @@ void Manarharake::printConfiguration()
 void Manarharake::executeArray(char command) 
 {
   char arrayLetter = command;
+  currenConfigArray = arrayLetter;
   if (arrayLetter < CONFIG_A || arrayLetter > CONFIG_G) {
     MH_LOG_LN("Invalid array letter.");
     return; // Exit the function if the array letter is invalid
