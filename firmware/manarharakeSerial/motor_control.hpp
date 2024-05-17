@@ -86,9 +86,9 @@ private:
     int encoderRotations;
 public:
     RotaryEncoder *encoder;
-    Motor(MotorSettings initalMotorSetting, ForceSensitiveResistor* fsrPtr, RotaryEncoder *encoderPtr);
+    Motor(MotorSettings initalMotorSetting, ForceSensitiveResistor* fsrPtr);
 
-    void begin();
+    void begin(RotaryEncoder *encoderPtr);
     void setPin(int pin);
     void setSpeed(int newSpeed);
     void _setSpeed(int speed);

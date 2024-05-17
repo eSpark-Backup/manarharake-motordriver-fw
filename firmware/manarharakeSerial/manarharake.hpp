@@ -16,6 +16,8 @@
 #define CONFIG_F   'F' 
 #define CONFIG_G   'G' 
 
+#define DEFAULT_ARRAY_CONFIG    CONFIG_A
+
 enum MOTOR_INDEX {
     MOTOR_1 = 0,
     MOTOR_2,

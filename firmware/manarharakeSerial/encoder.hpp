@@ -5,6 +5,12 @@
 #include <map>
 #include "board.h"
 
+#define CREATE_GLOBAL_ENCODER(X) \
+void _isrCallback_##X() \
+{ \
+    updateEncoderState(&encoders[X]); \
+}
+
 #define ENCODER1_PINA           GPIO_EMC_05
 #define ENCODER1_PINB           GPIO_EMC_06
 #define ENCODER1_PINZ           GPIO_EMC_07
@@ -29,7 +35,7 @@
 #define ENCODER6_PINB           GPIO_EMC_35
 #define ENCODER6_PINZ           GPIO_EMC_36
 
-#define ENC_STEPS_PER_REV       40.0F
+#define ENC_STEPS_PER_REV       80.0F
 
 /*  2:1 = 0.5.F, 1:10 = 10, 1:2 = 2 means 1 enc rev = 2 motor rev   */
 /*  0.5F means 1 encoder rev = 0.5 motor rev*/
@@ -59,6 +65,10 @@ public:
     {
         currentPosition = pos;
     }
+
+    static std::vector<RotaryEncoder>& getEncoders();
+
+    static void setup();
 
 };
 

@@ -10,12 +10,9 @@
 
 
 // Define 4 32-bit registers and 128bit motorData struct
-#if(BOARD == ESP32_BOARD)
-RTC_DATA_ATTR static uint32_t registers[4] = {0};
-#elif(BOARD == TEENSY_BOARD)
 uint32_t *NVRAM_UINT32 ((uint32_t *)0x400D4100);
 uint32_t *registers = NVRAM_UINT32;
-#endif
+
 MotorData rtcMotorDataBuffer;
 
 // Definition FSR object to be assigned to pointer
@@ -27,46 +24,19 @@ ForceSensitiveResistor fsr[FSR_COUNT] = {
   ForceSensitiveResistor(FSR5_PIN),
 };
 
-
-#define CREATE_GLOBAL_ENCODER(X, A, B) \
-    RotaryEncoder X(A, B); \
-    void _isrCallback_##X() \
-    { \
-        updateEncoderState(&X); \
-    }
-
-
-
-// Instantiate the RotaryEncoder class for each encoder
-CREATE_GLOBAL_ENCODER(encoder1, ENCODER1_PINA, ENCODER1_PINB);
-CREATE_GLOBAL_ENCODER(encoder2, ENCODER2_PINA, ENCODER2_PINB);
-CREATE_GLOBAL_ENCODER(encoder3, ENCODER3_PINA, ENCODER3_PINB);
-CREATE_GLOBAL_ENCODER(encoder4, ENCODER4_PINA, ENCODER4_PINB);
-CREATE_GLOBAL_ENCODER(encoder5, ENCODER5_PINA, ENCODER5_PINB);
-CREATE_GLOBAL_ENCODER(encoder6, ENCODER6_PINA, ENCODER6_PINB);
-
 // Definition of static member variable
 Motor Manarharake::motor[MOTOR_COUNT] = {
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2, M12_ENABLE_PIN}, &fsr[0], &encoder1), // Motor 1
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1], &encoder2), // Motor 2
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, &fsr[2], &encoder3), // Motor 3
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, &fsr[3], &encoder4), // Motor 4
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder5), // Motor 5
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder6)  // Motor 6
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2, M12_ENABLE_PIN}, &fsr[0]), // Motor 1
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1]), // Motor 2
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, &fsr[2]), // Motor 3
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, &fsr[3]), // Motor 4
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, &fsr[4]), // Motor 5
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, &fsr[4])  // Motor 6
 };
 
 //Definition of demoState
 bool Manarharake::demo_state = false;
-char Manarharake::currenConfigArray = 'X';
-
-
-void sleepFcn(const String& command) //For testing RTC logic
-{
-  #if(BOARD == ESP32_BOARD)
-  esp_deep_sleep(10000000);
-  #endif
-}
-
+char Manarharake::currenConfigArray = 'A';
 
 // Command List
 SerialCommand commands[] = {
@@ -78,16 +48,14 @@ SerialCommand commands[] = {
   {START_DEMO_CMD     , Manarharake::startDemo          },
   {STOP_DEMO_CMD      , Manarharake::stopDemo           },
   {SAVE_CONFIG_CMD    , Manarharake::saveConfiguration  },
-  {LOAD_CONFIG_CMD    , Manarharake::loadConfiguration  },
-  {"SLEEP"            , sleepFcn                        }, //For testing RTC Data saving logic
+  {LOAD_CONFIG_CMD    , Manarharake::loadConfiguration  }, 
 };
 
 void Manarharake::initalize()
 {
-    void (*isrCallbackArray[MOTOR_COUNT])(void);
 
     Serial.begin(BAUDRATE); 
-    #if(BOARD == TEENSY_BOARD)
+
     EEPROM.begin();
     SNVS_LPCR |= (1 << 24); //Enable NVRAM - documented in SDK[/B]  
     if(CrashReport)
@@ -106,40 +74,10 @@ void Manarharake::initalize()
         free(encoderVal);
       }
     }
-    #elif(BOARD == ESP32_BOARD)
-    EEPROM.begin(EEPROM_SIZE_BYTES);
-
-    MH_LOG("Reset Reason : ");
-    MH_LOG( esp_reset_reason() ); 
-
-    if(esp_reset_reason())
-    {
-      MH_LOG("Deep Sleep");
-      loadMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
-      for(int i = 0; i < MOTOR_COUNT; i++)
-      {
-        int *encoderVal = (int*)malloc(sizeof(int));
-        getMotorData(&rtcMotorDataBuffer, i, encoderVal);
-        int _encPos = *encoderVal;
-        motor[i].setEncoder(_encPos);
-        free(encoderVal);
-        MH_LOG("Encoder Val = ");
-        MH_LOG(_encPos);
-      }
-    }
-    #endif
-    delay(2000);
-    isrCallbackArray[0] = _isrCallback_encoder1;
-    isrCallbackArray[1] = _isrCallback_encoder2;
-    isrCallbackArray[2] = _isrCallback_encoder3;
-    isrCallbackArray[3] = _isrCallback_encoder4;
-    isrCallbackArray[4] = _isrCallback_encoder5;
-    isrCallbackArray[5] = _isrCallback_encoder6;
+    auto& encoders = RotaryEncoder::getEncoders();
     for(int i = 0; i < MOTOR_COUNT; i++)
     {
-      motor[i].encoder->isrCallback = (isrCallbackArray[i]);
-      motor[i].begin();
-      delay(100);
+      motor[i].begin(&encoders[i]);
     }
 
     loadConfiguration("NULL");

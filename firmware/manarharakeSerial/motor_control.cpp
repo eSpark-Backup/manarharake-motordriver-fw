@@ -2,11 +2,10 @@
 //#include <Arduino.h>
 #include "board.h"
 
-Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr, RotaryEncoder *encoderPtr) {
+Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr) {
     motorSetting.speed = initialMotorSetting.speed;
     motorSetting.position = initialMotorSetting.position;
     fsr = fsrPtr;
-    encoder = encoderPtr;
     fsr->setFsrSenLvl(initialMotorSetting.fsrSens);
     motorSetting.pin = initialMotorSetting.pin;
     motorSetting.pin2 = initialMotorSetting.pin2;
@@ -16,12 +15,13 @@ Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr, 
     // digitalWrite(motorSetting.motorEnablePin, HIGH);
 }
 
-void Motor::begin()
+void Motor::begin(RotaryEncoder *encoderPtr)
 {
     pinMode(motorSetting.pin, OUTPUT);
     pinMode(motorSetting.pin2, OUTPUT);
     pinMode(motorSetting.motorEnablePin, OUTPUT);
     digitalWrite(motorSetting.motorEnablePin, HIGH);
+    encoder = encoderPtr;
     encoder->begin();
     MH_LOG_LN("Motor Begin");
 }
