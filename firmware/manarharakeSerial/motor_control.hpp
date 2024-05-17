@@ -80,12 +80,12 @@ class Motor {
 private:
     MotorSettings   motorSetting;
     ForceSensitiveResistor *fsr;
-    RotaryEncoder *encoder;
     int currentPosition;
     bool emergencyHalt = false;
     int angle;
     int encoderRotations;
 public:
+    RotaryEncoder *encoder;
     Motor(MotorSettings initalMotorSetting, ForceSensitiveResistor* fsrPtr, RotaryEncoder *encoderPtr);
 
     void begin();

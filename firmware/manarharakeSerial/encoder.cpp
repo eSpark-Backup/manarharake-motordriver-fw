@@ -1,6 +1,5 @@
 #include "encoder.hpp"
 
-std::map<int, RotaryEncoder*> RotaryEncoder::instances;
 
 void RotaryEncoder::begin() {
     pinMode(pinA, INPUT_PULLUP);
@@ -9,28 +8,11 @@ void RotaryEncoder::begin() {
     currentStateB = digitalRead(pinB);
     previousStateA = currentStateA;
     previousStateB = currentStateB;
-    instances[digitalPinToInterrupt(pinA)] = this;
-    instances[digitalPinToInterrupt(pinB)] = this;
-    attachInterrupt(digitalPinToInterrupt(pinA), handleEncoder, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(pinB), handleEncoder, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(pinA), isrCallback, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(pinB), isrCallback, CHANGE);
     Serial.println("Encoder Begin!");
 }
 
 long RotaryEncoder::getPosition() {
     return currentPosition;
-}
-
-void RotaryEncoder::updatePosition() {
-    currentStateA = digitalRead(pinA);
-    currentStateB = digitalRead(pinB);
-
-    if (currentStateA != previousStateA) {
-        if (currentStateA != currentStateB) {
-            currentPosition++;
-        } else {
-            currentPosition--;
-        }
-    }
-    previousStateA = currentStateA;
-    previousStateB = currentStateB;
 }

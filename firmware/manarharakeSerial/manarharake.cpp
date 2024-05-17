@@ -27,22 +27,32 @@ ForceSensitiveResistor fsr[FSR_COUNT] = {
   ForceSensitiveResistor(FSR5_PIN),
 };
 
+
+#define CREATE_GLOBAL_ENCODER(X, A, B) \
+    RotaryEncoder X(A, B); \
+    void _isrCallback_##X() \
+    { \
+        updateEncoderState(&X); \
+    }
+
+
+
 // Instantiate the RotaryEncoder class for each encoder
-RotaryEncoder encoder1(ENCODER1_PINA, ENCODER1_PINB);
-// RotaryEncoder encoder2(ENCODER2_PINA, ENCODER2_PINB);
-// RotaryEncoder encoder3(ENCODER3_PINA, ENCODER3_PINB);
-// RotaryEncoder encoder4(ENCODER4_PINA, ENCODER4_PINB);
-// RotaryEncoder encoder5(ENCODER5_PINA, ENCODER5_PINB);
-// RotaryEncoder encoder6(ENCODER6_PINA, ENCODER6_PINB);
+CREATE_GLOBAL_ENCODER(encoder1, ENCODER1_PINA, ENCODER1_PINB);
+CREATE_GLOBAL_ENCODER(encoder2, ENCODER2_PINA, ENCODER2_PINB);
+CREATE_GLOBAL_ENCODER(encoder3, ENCODER3_PINA, ENCODER3_PINB);
+CREATE_GLOBAL_ENCODER(encoder4, ENCODER4_PINA, ENCODER4_PINB);
+CREATE_GLOBAL_ENCODER(encoder5, ENCODER5_PINA, ENCODER5_PINB);
+CREATE_GLOBAL_ENCODER(encoder6, ENCODER6_PINA, ENCODER6_PINB);
 
 // Definition of static member variable
 Motor Manarharake::motor[MOTOR_COUNT] = {
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2, M12_ENABLE_PIN}, &fsr[0], &encoder1), // Motor 1
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1], &encoder1), // Motor 2
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, &fsr[2], &encoder1), // Motor 3
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, &fsr[3], &encoder1), // Motor 4
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder1), // Motor 5
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder1)  // Motor 6
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1], &encoder2), // Motor 2
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, &fsr[2], &encoder3), // Motor 3
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, &fsr[3], &encoder4), // Motor 4
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder5), // Motor 5
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, &fsr[4], &encoder6)  // Motor 6
 };
 
 //Definition of demoState
@@ -74,6 +84,8 @@ SerialCommand commands[] = {
 
 void Manarharake::initalize()
 {
+    void (*isrCallbackArray[MOTOR_COUNT])(void);
+
     Serial.begin(BAUDRATE); 
     #if(BOARD == TEENSY_BOARD)
     EEPROM.begin();
@@ -117,8 +129,15 @@ void Manarharake::initalize()
     }
     #endif
     delay(2000);
+    isrCallbackArray[0] = _isrCallback_encoder1;
+    isrCallbackArray[1] = _isrCallback_encoder2;
+    isrCallbackArray[2] = _isrCallback_encoder3;
+    isrCallbackArray[3] = _isrCallback_encoder4;
+    isrCallbackArray[4] = _isrCallback_encoder5;
+    isrCallbackArray[5] = _isrCallback_encoder6;
     for(int i = 0; i < MOTOR_COUNT; i++)
     {
+      motor[i].encoder->isrCallback = (isrCallbackArray[i]);
       motor[i].begin();
       delay(100);
     }
