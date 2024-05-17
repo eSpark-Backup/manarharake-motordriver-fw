@@ -97,7 +97,7 @@ void Manarharake::loop()
     static int counter = 0;
     currentTime = millis();
 
-    if( currentTime - lastPrintTime >= 160)
+    if( currentTime - lastPrintTime >= 500)
     {
       Manarharake::printConfiguration(); //TODO: Add timed ouptut so that print is not so fast
       lastPrintTime = currentTime;

@@ -9,10 +9,6 @@ Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr) 
     fsr->setFsrSenLvl(initialMotorSetting.fsrSens);
     motorSetting.pin = initialMotorSetting.pin;
     motorSetting.pin2 = initialMotorSetting.pin2;
-    // pinMode(motorSetting.pin, OUTPUT);
-    // pinMode(motorSetting.pin2, OUTPUT);
-    // pinMode(motorSetting.motorEnablePin, OUTPUT);
-    // digitalWrite(motorSetting.motorEnablePin, HIGH);
 }
 
 void Motor::begin(RotaryEncoder *encoderPtr)
@@ -69,12 +65,9 @@ void Motor::maintainPosition() {
     int _currentPos    =   this->getCurrentPostion();
     int _currentAngle  =   this->getMotorAngle();
     int _requestedPos  =   this->getPositionSetting();
-    // MH_LOG_LN(_currentPos);
-    // MH_LOG_LN(_currentAngle);
-    // MH_LOG_LN(_requestedPos);
 
 
-    if(_currentPos == _requestedPos && _currentAngle == MOTOR_STOP_ANGLE ){ //Rev and angle both matched
+    if(_currentPos == _requestedPos){ //Rev and angle both matched
       this->stop();
       return;
     }
