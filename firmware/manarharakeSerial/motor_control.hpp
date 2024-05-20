@@ -52,7 +52,7 @@
 #define HIGH_SPEED              255
 #define MAX_POSITION            1000
 #define MIN_POSITION            0
-#define DEFAULT_SPEED           100
+#define DEFAULT_SPEED           HIGH_SPEED //FIXME: Testing speed
 #define DEFAULT_POSITION        0
 
 #define CW                      1

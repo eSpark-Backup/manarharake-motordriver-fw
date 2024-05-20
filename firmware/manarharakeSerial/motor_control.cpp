@@ -6,7 +6,10 @@ Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr) 
     motorSetting.speed = initialMotorSetting.speed;
     motorSetting.position = initialMotorSetting.position;
     fsr = fsrPtr;
-    fsr->setFsrSenLvl(initialMotorSetting.fsrSens);
+    if(NULL != fsr)
+    {
+        fsr->setFsrSenLvl(initialMotorSetting.fsrSens);
+    }
     motorSetting.pin = initialMotorSetting.pin;
     motorSetting.pin2 = initialMotorSetting.pin2;
 }
@@ -85,6 +88,8 @@ void Motor::maintainPosition() {
 }
 
 void Motor::setSensorSensitivity(int newSensitivity) {
+    if(NULL == fsr)
+        return;
     fsr->setFsrSenLvl(newSensitivity);
 }
 
@@ -97,6 +102,8 @@ int Motor::getPositionSetting() {
 }
 
 int Motor::getSensorSensitivity() {
+    if(NULL == fsr)
+        return -1;
     return fsr->getFsrSenLvl();
 }
 
@@ -107,6 +114,10 @@ void Motor::setPin(int pin)
 
 void Motor::checkFsr()
 {
+    if(NULL == fsr)
+    {
+        return;
+    }
     if(fsr->sensitivityReached())
     {
         setHaltState(true);
@@ -119,7 +130,9 @@ void Motor::checkFsr()
 
 int Motor::readCurrentFsrVal()
 {
-  return fsr->readFsrSensMapped();
+    if(NULL == fsr)
+        return -1;
+    return fsr->readFsrSensMapped();
 }
 
 void Motor::run() {

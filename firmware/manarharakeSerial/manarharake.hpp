@@ -44,14 +44,79 @@ enum DEMO_STATE {
 #define MOTOR_COUNT MOTOR_MAX
 // #define MOTOR_COUNT 2
 
+#define SELECTOR_RESISTOR   1
+#define SCROLL_RESISTOR     2
+
+#define HYSTERISIS          100
+
+#define DEFAULT_ACTIVATION 512
+#define DEFAULT_ACTIVATION_R1   DEFAULT_ACTIVATION
+#define DEFAULT_ACTIVATION_R2   DEFAULT_ACTIVATION
+
+#define R1      arraySelectionPot
+#define R2      arrayScrollPot
+
+class Potentiometer{
+    private:
+        int activationThreshold;
+        int currentValue;
+        int pin;
+        bool incremented = false;
+        int deactivationThreshold;
+    public:
+        bool toggle = false;
+        Potentiometer(int _pin, int _activation)
+        {
+            pin = _pin;
+            activationThreshold = _activation;
+            deactivationThreshold =  activationThreshold - HYSTERISIS;
+        }
+        void initalize(){
+            pinMode(pin, INPUT);
+            MH_LOG_LN("POT Begin");
+        }
+        int getvalue(){
+            return currentValue = analogRead(pin);
+        }
+        bool reachedActivation()
+        {
+            return (getvalue() >= activationThreshold) ? true : false;
+        }
+        bool reachedDeactivation()
+        {
+            return (getvalue() <= deactivationThreshold) ? true : false;
+        }
+        void resetFlag()
+        {
+            incremented = false;
+        }
+        void setFlag()
+        {
+            incremented = true;
+        }
+        bool incrementFlag()
+        {
+            return incremented;
+        }
+        void setActivation(int _activation)
+        {
+            activationThreshold = _activation;
+            deactivationThreshold =  activationThreshold - HYSTERISIS;
+            MH_LOG_LN("Activation Apllied");
+        }
+};
+
 class Manarharake{
     private:
         static Motor motor[MOTOR_COUNT];
         static char currenConfigArray;
         static bool demo_state;
+        static Potentiometer arrayScrollPot, arraySelectionPot;
+        static int counter;  //config count while demo or pot selection increment
+
     public:
         void initalize();
-        void loop();
+        static void loop();
         static void printConfiguration();
         static void executeArray(char command);
         static void setMotor(const String& command);
@@ -65,6 +130,8 @@ class Manarharake{
         static void stopDemo(const String& command);
         static void checkFsrThreshold();
         static void maintainPos();
+        static void potentiometerTask();
+        static void setResisitorActivation(int resNum, int activation);
 };
 
 #endif //MANARHARAKE_H

@@ -2,12 +2,18 @@
 #define FORCE_SENSITIVE_H
 #include "board.h"
 
-#define FSR_COUNT       5
+#define FSR_COUNT       3
 #define MIN_FSR_SENS    1
 #define MAX_FSR_SENS    10
 
-#define MIN_FSR_SENS_RAW    0
-#define MAX_FSR_SENS_RAW    4096
+#define MIN_10_BIT      0
+#define MAX_10_BIT      1023
+
+#define MIN_12_BIT      0
+#define MAX_12_BIT      4096
+
+#define MIN_FSR_SENS_RAW    MIN_10_BIT
+#define MAX_FSR_SENS_RAW    MAX_10_BIT
 
 #if (BOARD == ESP32_BOARD)
 // Pin definition for ESP32

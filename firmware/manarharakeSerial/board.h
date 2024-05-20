@@ -70,4 +70,14 @@
 #define MH_LOG_LN(x)    
 #endif
 
+#define ADC_LOG_PRINT true
+#if (ADC_LOG_PRINT)
+#define ADC_LOG(x)          Serial.print(x)
+#define ADC_LOG_LN(x)       Serial.println(x)
+#else
+#define ADC_LOG(x)   
+#define ADC_LOG_LN(x)
+#endif
+
+
 #endif //BOARD_H

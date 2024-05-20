@@ -20,23 +20,27 @@ ForceSensitiveResistor fsr[FSR_COUNT] = {
   ForceSensitiveResistor(FSR1_PIN),
   ForceSensitiveResistor(FSR2_PIN),
   ForceSensitiveResistor(FSR3_PIN),
-  ForceSensitiveResistor(FSR4_PIN),
-  ForceSensitiveResistor(FSR5_PIN),
+  // ForceSensitiveResistor(FSR4_PIN),
+  // ForceSensitiveResistor(FSR5_PIN),
 };
+
 
 // Definition of static member variable
 Motor Manarharake::motor[MOTOR_COUNT] = {
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2, M12_ENABLE_PIN}, &fsr[0]), // Motor 1
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1]), // Motor 2
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, &fsr[2]), // Motor 3
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, &fsr[3]), // Motor 4
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, &fsr[4]), // Motor 5
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, &fsr[4])  // Motor 6
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, NULL   ), // Motor 4
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, NULL   ), // Motor 5
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, NULL   )  // Motor 6
 };
 
 //Definition of demoState
+char Manarharake::currenConfigArray = 'X';
 bool Manarharake::demo_state = false;
-char Manarharake::currenConfigArray = 'A';
+Potentiometer Manarharake::R2 = Potentiometer(FSR4_PIN, DEFAULT_ACTIVATION_R2);
+Potentiometer Manarharake::R1 = Potentiometer(FSR5_PIN, DEFAULT_ACTIVATION_R1);
+int Manarharake::counter = 0;
 
 // Command List
 SerialCommand commands[] = {
@@ -74,11 +78,17 @@ void Manarharake::initalize()
         free(encoderVal);
       }
     }
+
+    /* Motor and encoder initialize */
     auto& encoders = RotaryEncoder::getEncoders();
     for(int i = 0; i < MOTOR_COUNT; i++)
     {
       motor[i].begin(&encoders[i]);
     }
+
+    /* Potentiometer initialize */
+    R2.initalize();
+    R1.initalize();
 
     loadConfiguration("NULL");
     MH_LOG_LN("Controller Started");
@@ -90,18 +100,16 @@ unsigned long currentTime;
 char demoArray = 'A';
 const char configCharArray[MOTOR_ARRAY_CONF_COUNT] = {CONFIG_A, CONFIG_B, CONFIG_C, CONFIG_D, CONFIG_E, CONFIG_F, CONFIG_G};
 
-
 void Manarharake::loop()
 {
     static int caseDemoArray = 0;
-    static int counter = 0;
     currentTime = millis();
 
-    if( currentTime - lastPrintTime >= 500)
-    {
-      Manarharake::printConfiguration(); //TODO: Add timed ouptut so that print is not so fast
-      lastPrintTime = currentTime;
-    }
+    // if( currentTime - lastPrintTime >= 500)
+    // {
+    //   Manarharake::printConfiguration(); //TODO: Add timed ouptut so that print is not so fast
+    //   lastPrintTime = currentTime;
+    // }
 
     if (Serial.available() > 0) {
       String command = Serial.readStringUntil('\n');  // Read the command until newline character
@@ -121,7 +129,7 @@ void Manarharake::loop()
 
     Manarharake::maintainPos();
     Manarharake::checkFsrThreshold();
-
+    Manarharake::potentiometerTask();
 
     if(demo_state)
     {
@@ -203,18 +211,32 @@ void Manarharake::printConfiguration()
     MH_LOG_LN("Total Configuration:");
     MH_LOG("Active Array Config : ");
     MH_LOG_LN(currenConfigArray);
+
+    MH_LOG("Array cycle Pot ");
+    MH_LOG_LN(R2.getvalue());
+
+    MH_LOG("Array Activation Pot ");
+    MH_LOG_LN(R1.getvalue());
     i = 0;
   }
 }
 
 void Manarharake::executeArray(char command) 
 {
+  static char lastConfig = "X";
+  if(lastConfig == command) //Avoid applying same config
+  {
+    return;
+  }
+  lastConfig = command;
   char arrayLetter = command;
   currenConfigArray = arrayLetter;
   if (arrayLetter < CONFIG_A || arrayLetter > CONFIG_G) {
     MH_LOG_LN("Invalid array letter.");
     return; // Exit the function if the array letter is invalid
   }
+  MH_LOG("Applying Config : ");
+  MH_LOG_LN(command);
   
   int arrayIndex = arrayLetter - CONFIG_A; // Calculate array index
   
@@ -427,6 +449,7 @@ void Manarharake::setResistor(const String& command)
             MH_LOG(resistorNum);
             MH_LOG(" set to value ");
             MH_LOG_LN(value);
+            setResisitorActivation(resistorNum, value);
         } else {
             // Invalid resistor number
             MH_LOG("Invalid resistor number.");
@@ -436,4 +459,100 @@ void Manarharake::setResistor(const String& command)
         // Incorrect command format
         MH_LOG_LN("Incorrect command format.");
     }
+}
+
+void Manarharake::potentiometerTask()
+{
+  static int adcPrintTime = 0;
+  /* array increment using pot */
+  if(R2.reachedActivation())
+  {
+    if(!R2.incrementFlag())
+    {
+      R2.setFlag();
+      /* increment the config by one */
+      counter++;
+      if(counter >= MOTOR_ARRAY_CONF_COUNT)
+      {
+        counter = 0;
+      }
+      MH_LOG("Cycle Config :");
+      MH_LOG_LN(configCharArray[counter]);
+    }
+  }
+  if(R2.reachedDeactivation())
+  {
+    if(R2.incrementFlag())
+    {
+      R2.resetFlag();
+      MH_LOG_LN("Cycle Off!");
+    }
+  }
+
+  /* array select pot */
+  if(R1.reachedActivation())
+  {
+    if(!R1.incrementFlag())
+    {
+      R1.setFlag();
+      if(R1.toggle)
+      {
+        R1.toggle = false;
+        executeArray(configCharArray[counter]);
+        // MH_LOG_LN("Exec Array counter");
+      }
+      else if(!R1.toggle)
+      {
+        R1.toggle = true;
+        executeArray(CONFIG_G);
+        // MH_LOG_LN("Exec Array Default");
+      }
+    }
+
+  }
+  if(R1.reachedDeactivation())
+  {
+    if(R1.incrementFlag())
+    {
+      R1.resetFlag();
+    }
+  }
+
+  /* printing adc values */
+    
+  #if(ADC_LOG_PRINT)
+  if(currentTime - adcPrintTime > 400)
+  {
+    ADC_LOG(0);
+    ADC_LOG(", ");
+
+    // MH_LOG("Array Activation Pot ");
+    ADC_LOG(1024);
+    ADC_LOG(", ");
+    
+    ADC_LOG(R2.getvalue());
+    ADC_LOG(", ");
+
+    // MH_LOG("Array Activation Pot ");
+    ADC_LOG_LN(R1.getvalue());
+    adcPrintTime = currentTime;
+  }
+  #endif
+
+}
+
+void Manarharake::setResisitorActivation(int resNum, int activation)
+{
+  switch (resNum)
+  {
+  case SCROLL_RESISTOR:
+    R2.setActivation(activation);
+    break;
+  case SELECTOR_RESISTOR:
+    R1.setActivation(activation);
+    break;
+  
+  default:
+    break;
+  }
 }
