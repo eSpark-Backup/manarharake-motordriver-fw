@@ -2,7 +2,7 @@
 #define FORCE_SENSITIVE_H
 #include "board.h"
 
-#define FSR_COUNT       3
+#define FSR_COUNT       2
 #define MIN_FSR_SENS    1
 #define MAX_FSR_SENS    10
 

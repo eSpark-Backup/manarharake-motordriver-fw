@@ -19,7 +19,7 @@ MotorData rtcMotorDataBuffer;
 ForceSensitiveResistor fsr[FSR_COUNT] = {
   ForceSensitiveResistor(FSR1_PIN),
   ForceSensitiveResistor(FSR2_PIN),
-  ForceSensitiveResistor(FSR3_PIN),
+  // ForceSensitiveResistor(FSR3_PIN),
   // ForceSensitiveResistor(FSR4_PIN),
   // ForceSensitiveResistor(FSR5_PIN),
 };
@@ -29,7 +29,7 @@ ForceSensitiveResistor fsr[FSR_COUNT] = {
 Motor Manarharake::motor[MOTOR_COUNT] = {
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2, M12_ENABLE_PIN}, &fsr[0]), // Motor 1
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1]), // Motor 2
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, &fsr[2]), // Motor 3
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, NULL   ), // Motor 3
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, NULL   ), // Motor 4
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, NULL   ), // Motor 5
     Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, NULL   )  // Motor 6
@@ -38,8 +38,8 @@ Motor Manarharake::motor[MOTOR_COUNT] = {
 //Definition of demoState
 char Manarharake::currenConfigArray = 'X';
 bool Manarharake::demo_state = false;
-Potentiometer Manarharake::R2 = Potentiometer(FSR4_PIN, DEFAULT_ACTIVATION_R2);
-Potentiometer Manarharake::R1 = Potentiometer(FSR5_PIN, DEFAULT_ACTIVATION_R1);
+Potentiometer Manarharake::R2 = Potentiometer(POT_R2_PIN, DEFAULT_ACTIVATION_R2);
+Potentiometer Manarharake::R1 = Potentiometer(POT_R1_PIN, DEFAULT_ACTIVATION_R1);
 int Manarharake::counter = 0;
 
 // Command List
@@ -177,8 +177,8 @@ void Manarharake::maintainPos()
 {
   for(int i = 0; i < MOTOR_COUNT; i++)
   {
-    setMotorData(&rtcMotorDataBuffer, i, motor[i].getEncoder());
-    saveMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
+    // setMotorData(&rtcMotorDataBuffer, i, motor[i].getEncoder());
+    // saveMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
     motor[i].maintainPosition();
   }
 }
@@ -209,14 +209,14 @@ void Manarharake::printConfiguration()
   if(i >= MOTOR_COUNT)
   {
     MH_LOG_LN("Total Configuration:");
-    MH_LOG("Active Array Config : ");
-    MH_LOG_LN(currenConfigArray);
+    // MH_LOG("Active Array Config : ");
+    // MH_LOG_LN(currenConfigArray);
 
-    MH_LOG("Array cycle Pot ");
-    MH_LOG_LN(R2.getvalue());
+    // MH_LOG("Array cycle Pot ");
+    // MH_LOG_LN(R2.getvalue());
 
-    MH_LOG("Array Activation Pot ");
-    MH_LOG_LN(R1.getvalue());
+    // MH_LOG("Array Activation Pot ");
+    // MH_LOG_LN(R1.getvalue());
     i = 0;
   }
 }
@@ -463,65 +463,73 @@ void Manarharake::setResistor(const String& command)
 
 void Manarharake::potentiometerTask()
 {
-  static int adcPrintTime = 0;
+  static int adc_check_time = 0;
   /* array increment using pot */
-  if(R2.reachedActivation())
+  if(currentTime - adc_check_time > 250)
   {
-    if(!R2.incrementFlag())
+    if(R2.reachedActivation())
     {
-      R2.setFlag();
-      /* increment the config by one */
-      counter++;
-      if(counter >= MOTOR_ARRAY_CONF_COUNT)
+      if(!R2.incrementFlag())
       {
-        counter = 0;
+        R2.setFlag();
+        /* increment the config by one */
+        counter++;
+        if(counter >= MOTOR_ARRAY_CONF_COUNT)
+        {
+          counter = 0;
+        }
+        MH_LOG("Cycle Config :");
+        MH_LOG_LN(configCharArray[counter]);
       }
-      MH_LOG("Cycle Config :");
-      MH_LOG_LN(configCharArray[counter]);
     }
-  }
-  if(R2.reachedDeactivation())
-  {
-    if(R2.incrementFlag())
+    if(R2.reachedDeactivation())
     {
-      R2.resetFlag();
-      MH_LOG_LN("Cycle Off!");
-    }
-  }
-
-  /* array select pot */
-  if(R1.reachedActivation())
-  {
-    if(!R1.incrementFlag())
-    {
-      R1.setFlag();
-      if(R1.toggle)
+      if(R2.incrementFlag())
       {
-        R1.toggle = false;
-        executeArray(configCharArray[counter]);
-        // MH_LOG_LN("Exec Array counter");
-      }
-      else if(!R1.toggle)
-      {
-        R1.toggle = true;
-        executeArray(CONFIG_G);
-        // MH_LOG_LN("Exec Array Default");
+        R2.resetFlag();
+        MH_LOG_LN("Cycle Off!");
       }
     }
 
-  }
-  if(R1.reachedDeactivation())
-  {
-    if(R1.incrementFlag())
+    /* array select pot */
+    if(R1.reachedActivation())
     {
-      R1.resetFlag();
+      if(!R1.incrementFlag())
+      {
+        R1.setFlag();
+        if(R1.toggle)
+        {
+          R1.toggle = false;
+          executeArray(configCharArray[counter]);
+          // MH_LOG_LN("Exec Array counter");
+        }
+        else if(!R1.toggle)
+        {
+          R1.toggle = true;
+          executeArray(CONFIG_G);
+          // MH_LOG_LN("Exec Array Default");
+        }
+      }
+
     }
+    if(R1.reachedDeactivation())
+    {
+      if(R1.incrementFlag())
+      {
+        R1.resetFlag();
+      }
+    }
+    adc_check_time = currentTime;
   }
+
+  
 
   /* printing adc values */
     
   #if(ADC_LOG_PRINT)
-  if(currentTime - adcPrintTime > 400)
+  static int adcPrintTime = 0;
+
+  if(currentTime - adcPrintTime > 100)
   {
     ADC_LOG(0);
     ADC_LOG(", ");

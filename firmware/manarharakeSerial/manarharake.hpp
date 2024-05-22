@@ -53,8 +53,10 @@ enum DEMO_STATE {
 #define DEFAULT_ACTIVATION_R1   DEFAULT_ACTIVATION
 #define DEFAULT_ACTIVATION_R2   DEFAULT_ACTIVATION
 
-#define R1      arraySelectionPot
-#define R2      arrayScrollPot
+#define R1              arraySelectionPot
+#define R2              arrayScrollPot
+#define POT_R1_PIN      FSR3_PIN
+#define POT_R2_PIN      FSR4_PIN
 
 class Potentiometer{
     private:

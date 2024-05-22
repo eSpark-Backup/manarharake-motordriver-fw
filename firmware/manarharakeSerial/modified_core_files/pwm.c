@@ -72,11 +72,11 @@ const struct pwm_pin_info_struct pwm_pin_info[] = {
 	{1, M(1, 1), 1, 1},  // FlexPWM1_1_A  43  // SD_B0_02
 	{1, M(1, 0), 2, 1},  // FlexPWM1_0_B  44  // SD_B0_01
 	{1, M(1, 0), 1, 1},  // FlexPWM1_0_A  45  // SD_B0_00
-	{1, M(1, 2), 2, 1},  // FlexPWM1_2_B  46  // SD_B0_05
-	{1, M(1, 2), 1, 1},  // FlexPWM1_2_A  47  // SD_B0_04
+	{0, M(1, 0), 0, 0},  // FlexPWM1_2_B  46  // SD_B0_05 {1, M(1, 2), 2, 1}
+	{0, M(1, 0), 0, 0},  // FlexPWM1_2_A  47  // SD_B0_04 {1, M(1, 2), 1, 1}
 	{0, M(1, 0), 0, 0},  // duplicate FlexPWM1_0_B
-	{0, M(1, 0), 0, 0},  // duplicate FlexPWM1_2_A
-	{0, M(1, 0), 0, 0},  // duplicate FlexPWM1_2_B
+	{1, M(1, 2), 1, 1},  // duplicate FlexPWM1_2_A		{0, M(1, 0), 0, 0}
+	{1, M(1, 2), 2, 1},  // duplicate FlexPWM1_2_B		{0, M(1, 0), 0, 0}
 	{1, M(3, 3), 2, 1},  // FlexPWM3_3_B  51  // EMC_22
 	{0, M(1, 0), 0, 0},  // duplicate FlexPWM1_1_B
 	{0, M(1, 0), 0, 0},  // duplicate FlexPWM1_1_A

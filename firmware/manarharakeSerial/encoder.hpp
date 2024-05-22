@@ -35,14 +35,14 @@ void _isrCallback_##X() \
 #define ENCODER6_PINB           GPIO_EMC_35
 #define ENCODER6_PINZ           GPIO_EMC_36
 
-#define ENC_STEPS_PER_REV       80.0F
+#define ENC_STEPS_PER_REV       1024.0F
 
 /*  2:1 = 0.5.F, 1:10 = 10, 1:2 = 2 means 1 enc rev = 2 motor rev   */
 /*  0.5F means 1 encoder rev = 0.5 motor rev*/
 #define MOTOR_IN_TO_OUT_RATIO   1.0F 
 
 #define ANGLE_PER_ENC_STEP      (360.0F / ENC_STEPS_PER_REV)
-#define MOTOR_STOP_ANGLE            0
+#define MOTOR_STOP_ANGLE        0
 
 class RotaryEncoder {
 public:
@@ -76,7 +76,7 @@ public:
 static void updateEncoderState(RotaryEncoder *encObj) {
     encObj->currentStateA = digitalRead(encObj->pinA);
     encObj->currentStateB = digitalRead(encObj->pinB);
-    if (encObj->currentStateA != encObj->previousStateA) {
+    if (encObj->currentStateA != encObj->previousStateA && encObj->currentStateA == HIGH) {
         if (encObj->currentStateA != encObj->currentStateB) {
             encObj->currentPosition++;
         } else {
@@ -84,7 +84,7 @@ static void updateEncoderState(RotaryEncoder *encObj) {
         }
     }
     encObj->previousStateA = encObj->currentStateA;
-    encObj->previousStateB = encObj->currentStateB;
+    // encObj->previousStateB = encObj->currentStateB;
 }
 
 

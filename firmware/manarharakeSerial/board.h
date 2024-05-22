@@ -10,6 +10,7 @@
 // #define BOARD ESP32_BOARD
 
 #define DEBUG true
+#define ADC_LOG_PRINT true
 
 #if (BOARD == TEENSY_BOARD)
 #define GPIO_EMC_00     55
@@ -36,13 +37,17 @@
 #define GPIO_EMC_22     70
 #define GPIO_EMC_23     71
 #define GPIO_EMC_24     73
-#define GPIO_EMC_25     74
+
+// #define GPIO_EMC_25     74
+#define GPIO_EMC_25     53
+
 #define GPIO_EMC_26     75
 
-#define GPIO_EMC_27     76
-#define GPIO_EMC_28     77
-// #define GPIO_EMC_27     49
-// #define GPIO_EMC_28     50
+// #define GPIO_EMC_27     76
+// #define GPIO_EMC_28     77
+
+#define GPIO_EMC_27     49
+#define GPIO_EMC_28     50
 
 #define GPIO_EMC_29     78
 #define GPIO_EMC_30     79
@@ -70,7 +75,6 @@
 #define MH_LOG_LN(x)    
 #endif
 
-#define ADC_LOG_PRINT true
 #if (ADC_LOG_PRINT)
 #define ADC_LOG(x)          Serial.print(x)
 #define ADC_LOG_LN(x)       Serial.println(x)
