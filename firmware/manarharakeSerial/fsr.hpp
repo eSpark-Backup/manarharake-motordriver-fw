@@ -33,7 +33,7 @@
 #define FSR5_PIN        GPIO_AD_B1_06
 #endif
 
-#define DEFAULT_SENSITIVITY 1
+#define DEFAULT_SENSITIVITY 10
 
 
 class ForceSensitiveResistor{

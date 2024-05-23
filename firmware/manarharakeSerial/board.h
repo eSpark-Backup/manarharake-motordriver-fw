@@ -10,7 +10,7 @@
 // #define BOARD ESP32_BOARD
 
 #define DEBUG true
-#define ADC_LOG_PRINT true
+#define ADC_LOG_PRINT false
 
 #if (BOARD == TEENSY_BOARD)
 #define GPIO_EMC_00     55

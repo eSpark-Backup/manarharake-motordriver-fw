@@ -23,19 +23,19 @@
 #endif
 
 #if (BOARD == TEENSY_BOARD)
-#define M1_PIN      GPIO_EMC_03
-#define M2_PIN      GPIO_EMC_08
-#define M3_PIN      GPIO_EMC_15
-#define M4_PIN      GPIO_EMC_20
-#define M5_PIN      GPIO_EMC_27 
-#define M6_PIN      GPIO_EMC_32
+#define M1_PIN2      GPIO_EMC_03
+#define M2_PIN2      GPIO_EMC_08
+#define M3_PIN2      GPIO_EMC_15
+#define M4_PIN2      GPIO_EMC_20
+#define M5_PIN2      GPIO_EMC_27 
+#define M6_PIN2      GPIO_EMC_32
 
-#define M1_PIN2     GPIO_EMC_04
-#define M2_PIN2     GPIO_EMC_09
-#define M3_PIN2     GPIO_EMC_16
-#define M4_PIN2     GPIO_EMC_21
-#define M5_PIN2     GPIO_EMC_28
-#define M6_PIN2     GPIO_EMC_33
+#define M1_PIN       GPIO_EMC_04
+#define M2_PIN       GPIO_EMC_09
+#define M3_PIN       GPIO_EMC_16
+#define M4_PIN       GPIO_EMC_21
+#define M5_PIN       GPIO_EMC_28
+#define M6_PIN       GPIO_EMC_33
 
 #define M12_ENABLE_PIN  GPIO_EMC_00
 #define M34_ENABLE_PIN  GPIO_EMC_13
@@ -69,6 +69,8 @@ struct MotorSettings {
     int pin2;
     int motorEnablePin;
     bool direction = MOTOR_DIRECTION;
+    int maxPosition;
+    int minPosition;
 };
 
 // Define MotorsConfig structure

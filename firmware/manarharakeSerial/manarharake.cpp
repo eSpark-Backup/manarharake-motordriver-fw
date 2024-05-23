@@ -27,12 +27,12 @@ ForceSensitiveResistor fsr[FSR_COUNT] = {
 
 // Definition of static member variable
 Motor Manarharake::motor[MOTOR_COUNT] = {
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2, M12_ENABLE_PIN}, &fsr[0]), // Motor 1
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN}, &fsr[1]), // Motor 2
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN}, NULL   ), // Motor 3
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN}, NULL   ), // Motor 4
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN}, NULL   ), // Motor 5
-    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN}, NULL   )  // Motor 6
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M1_PIN, M1_PIN2, M12_ENABLE_PIN, MOTOR_DIRECTION, M1_MAX_POS, M1_MIN_POS}, &fsr[0]), // Motor 1
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M2_PIN, M2_PIN2, M12_ENABLE_PIN, MOTOR_DIRECTION, M2_MAX_POS, M2_MIN_POS}, &fsr[1]), // Motor 2
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M3_PIN, M3_PIN2, M34_ENABLE_PIN, MOTOR_DIRECTION, M3_MAX_POS, M3_MIN_POS}, NULL   ), // Motor 3
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M4_PIN, M4_PIN2, M34_ENABLE_PIN, MOTOR_DIRECTION, M4_MAX_POS, M4_MIN_POS}, NULL   ), // Motor 4
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M5_PIN, M5_PIN2, M56_ENABLE_PIN, MOTOR_DIRECTION, M5_MAX_POS, M5_MIN_POS}, NULL   ), // Motor 5
+    Motor({DEFAULT_SPEED, DEFAULT_POSITION, DEFAULT_SENSITIVITY, M6_PIN, M6_PIN2, M56_ENABLE_PIN, MOTOR_DIRECTION, M6_MAX_POS, M6_MIN_POS}, NULL   )  // Motor 6
 };
 
 //Definition of demoState
@@ -60,24 +60,24 @@ void Manarharake::initalize()
 
     Serial.begin(BAUDRATE); 
 
-    EEPROM.begin();
-    SNVS_LPCR |= (1 << 24); //Enable NVRAM - documented in SDK[/B]  
-    if(CrashReport)
-    {
-      MH_LOG("Reset Reason : "); 
-      MH_LOG_LN(CrashReport); //TODO: Check crashreport then load from RTC if required
-      loadMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
-      for(int i = 0; i < MOTOR_COUNT; i++)
-      {
-        int *encoderVal = (int*)malloc(sizeof(int));
-        getMotorData(&rtcMotorDataBuffer, i, encoderVal);
-        int _encPos = *encoderVal;
-        MH_LOG("Encoder Val = ");
-        MH_LOG(_encPos);
-        motor[i].setEncoder(_encPos);
-        free(encoderVal);
-      }
-    }
+    // EEPROM.begin();
+    // SNVS_LPCR |= (1 << 24); //Enable NVRAM - documented in SDK[/B]  
+    // if(CrashReport)
+    // {
+    //   MH_LOG("Reset Reason : "); 
+    //   MH_LOG_LN(CrashReport); //TODO: Check crashreport then load from RTC if required
+    //   loadMotorData(registers, (uint32_t *)&rtcMotorDataBuffer);
+    //   for(int i = 0; i < MOTOR_COUNT; i++)
+    //   {
+    //     int *encoderVal = (int*)malloc(sizeof(int));
+    //     getMotorData(&rtcMotorDataBuffer, i, encoderVal);
+    //     int _encPos = *encoderVal;
+    //     MH_LOG("Encoder Val = ");
+    //     MH_LOG(_encPos);
+    //     motor[i].setEncoder(_encPos);
+    //     free(encoderVal);
+    //   }
+    // }
 
     /* Motor and encoder initialize */
     auto& encoders = RotaryEncoder::getEncoders();
@@ -90,8 +90,15 @@ void Manarharake::initalize()
     R2.initalize();
     R1.initalize();
 
-    loadConfiguration("NULL");
+    // loadConfiguration("NULL");
+    executeArray(CONFIG_A);
     MH_LOG_LN("Controller Started");
+
+  /* Set highest priority to interrupts */
+  // NVIC_SET_PRIORITY(IRQ_PORTA , 0);
+  // NVIC_SET_PRIORITY(IRQ_PORTB , 1);
+  // NVIC_SET_PRIORITY(IRQ_PORTC , 2);
+  // NVIC_SET_PRIORITY(IRQ_PORTD , 3);
 }
 
 unsigned long lastExecutionTime = 0;
@@ -105,11 +112,11 @@ void Manarharake::loop()
     static int caseDemoArray = 0;
     currentTime = millis();
 
-    // if( currentTime - lastPrintTime >= 500)
-    // {
-    //   Manarharake::printConfiguration(); //TODO: Add timed ouptut so that print is not so fast
-    //   lastPrintTime = currentTime;
-    // }
+    if( currentTime - lastPrintTime >= 500)
+    {
+      Manarharake::printConfiguration(); //TODO: Add timed ouptut so that print is not so fast
+      lastPrintTime = currentTime;
+    }
 
     if (Serial.available() > 0) {
       String command = Serial.readStringUntil('\n');  // Read the command until newline character
@@ -129,7 +136,6 @@ void Manarharake::loop()
 
     Manarharake::maintainPos();
     Manarharake::checkFsrThreshold();
-    Manarharake::potentiometerTask();
 
     if(demo_state)
     {
@@ -161,6 +167,10 @@ void Manarharake::loop()
           }
         break;
       }
+    }
+    else
+    {
+      Manarharake::potentiometerTask();
     }
 
 }

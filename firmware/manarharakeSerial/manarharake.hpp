@@ -42,7 +42,7 @@ enum DEMO_STATE {
 
 // #define MOTOR_COUNT sizeof(Manarharake::motor)/sizeof(Manarharake::motor[0])
 #define MOTOR_COUNT MOTOR_MAX
-// #define MOTOR_COUNT 2
+// #define MOTOR_COUNT 1
 
 #define SELECTOR_RESISTOR   1
 #define SCROLL_RESISTOR     2
@@ -57,6 +57,20 @@ enum DEMO_STATE {
 #define R2              arrayScrollPot
 #define POT_R1_PIN      FSR3_PIN
 #define POT_R2_PIN      FSR4_PIN
+
+#define M1_MAX_POS 3000
+#define M2_MAX_POS 3000
+#define M3_MAX_POS 3000
+#define M4_MAX_POS 3000
+#define M5_MAX_POS 3000
+#define M6_MAX_POS 3000
+
+#define M1_MIN_POS -3000
+#define M2_MIN_POS -3000
+#define M3_MIN_POS -3000
+#define M4_MIN_POS -3000
+#define M5_MIN_POS -3000
+#define M6_MIN_POS -3000
 
 class Potentiometer{
     private:

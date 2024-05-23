@@ -12,6 +12,8 @@ Motor::Motor(MotorSettings initialMotorSetting, ForceSensitiveResistor* fsrPtr) 
     }
     motorSetting.pin = initialMotorSetting.pin;
     motorSetting.pin2 = initialMotorSetting.pin2;
+    motorSetting.maxPosition = initialMotorSetting.maxPosition;
+    motorSetting.minPosition = initialMotorSetting.minPosition;
 }
 
 void Motor::begin(RotaryEncoder *encoderPtr)
@@ -33,19 +35,19 @@ void Motor::setSpeed(int newSpeed) {
 void Motor::_setSpeed(int speed) {
     if(emergencyHalt)
     {
-        analogWrite(motorSetting.pin,       STOP_SPEED);
-        analogWrite(motorSetting.pin2,      STOP_SPEED);
+        digitalWrite(motorSetting.pin,       STOP_SPEED);
+        digitalWrite(motorSetting.pin2,      STOP_SPEED);
         return;
     } 
 
     if(motorSetting.direction == CW)
     {
-        analogWrite(motorSetting.pin,       speed);
-        analogWrite(motorSetting.pin2,      LOW);
+        digitalWrite(motorSetting.pin,       HIGH);
+        digitalWrite(motorSetting.pin2,      LOW);
     }
     else if(motorSetting.direction == CCW) {
-        analogWrite(motorSetting.pin,       LOW);
-        analogWrite(motorSetting.pin2,      speed);
+        digitalWrite(motorSetting.pin,       LOW);
+        digitalWrite(motorSetting.pin2,      HIGH);
     }
 }
 
@@ -54,7 +56,18 @@ void Motor::setDirection(bool dir) {
 }
 
 void Motor::setPosition(int newPosition) {
-    motorSetting.position = newPosition;
+    if(newPosition >= motorSetting.maxPosition)
+    {
+        motorSetting.position = motorSetting.maxPosition;
+    }
+    else if(newPosition <= motorSetting.minPosition)
+    {
+        motorSetting.position = motorSetting.minPosition;
+    }
+    else
+    {
+        motorSetting.position = newPosition;
+    }
 }
 
 void Motor::maintainPosition() {
@@ -74,13 +87,13 @@ void Motor::maintainPosition() {
       this->stop();
       return;
     }
-    else if(_currentPos < _requestedPos || _currentAngle < MOTOR_STOP_ANGLE) //Behind the required position
+    else if(_currentPos < _requestedPos) //Behind the required position
     {
       this->setDirection(CW);
       this->run();
       return;
     }
-    else if(_currentPos > _requestedPos || _currentAngle > MOTOR_STOP_ANGLE){ //Ahead of requried position
+    else if(_currentPos > _requestedPos){ //Ahead of requried position
       this->setDirection(CCW);
       this->run();
       return;
